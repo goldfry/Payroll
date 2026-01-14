@@ -81,7 +81,7 @@ require_once 'includes/header.php';
         <span>Create</span>
     </div>
     <h1 class="page-title">Create Payroll</h1>
-    <p class="page-subtitle">Generate payroll for an employee</p>
+    <p class="page-subtitle">Generate payroll for an employeeeeeeeee</p>
 </div>
 
 <?php if ($message): ?>
