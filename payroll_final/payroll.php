@@ -51,12 +51,17 @@ $filterMonth = isset($_GET['month']) ? sanitize($_GET['month']) : '';
 $filterYear = isset($_GET['year']) ? (int)$_GET['year'] : date('Y');
 $filterPeriod = isset($_GET['period']) ? sanitize($_GET['period']) : '';
 $filterStatus = isset($_GET['status']) ? sanitize($_GET['status']) : '';
+$filterDept = isset($_GET['department']) ? (int)$_GET['department'] : 0;
 
 // Build query
 $whereClause = "p.payroll_year = $filterYear";
 if ($filterMonth !== '') $whereClause .= " AND p.payroll_month = '$filterMonth'";
 if ($filterPeriod !== '') $whereClause .= " AND p.period_type = '$filterPeriod'";
 if ($filterStatus !== '') $whereClause .= " AND p.status = '$filterStatus'";
+if ($filterDept > 0) $whereClause .= " AND p.department_id = $filterDept";
+
+// Get all departments for filter dropdown
+$departments = $conn->query("SELECT id, department_name, department_code FROM departments ORDER BY department_name");
 
 // Get payroll records
 $payrolls = $conn->query("
@@ -64,7 +69,7 @@ $payrolls = $conn->query("
            d.department_name, d.department_code
     FROM payroll p
     LEFT JOIN employees e ON p.employee_id = e.id
-    LEFT JOIN departments d ON e.department_id = d.id
+    LEFT JOIN departments d ON p.department_id = d.id
     WHERE $whereClause
     ORDER BY p.created_at DESC
 ");
@@ -125,6 +130,17 @@ require_once 'includes/header.php';
     <!-- Filters -->
     <div style="padding: 1rem 1.5rem; border-bottom: 1px solid var(--gray-100);">
         <form method="GET" class="filter-bar">
+            <select name="department" class="form-control" style="width: auto; min-width: 200px;" onchange="this.form.submit()">
+                <option value="0">All Departments</option>
+                <?php 
+                $departments->data_seek(0);
+                while($dept = $departments->fetch_assoc()): 
+                ?>
+                    <option value="<?php echo $dept['id']; ?>" <?php echo $filterDept == $dept['id'] ? 'selected' : ''; ?>>
+                        [<?php echo htmlspecialchars($dept['department_code']); ?>] <?php echo htmlspecialchars($dept['department_name']); ?>
+                    </option>
+                <?php endwhile; ?>
+            </select>
             <select name="month" class="form-control" style="width: auto;" onchange="this.form.submit()">
                 <option value="">All Months</option>
                 <?php 
@@ -149,6 +165,9 @@ require_once 'includes/header.php';
                 <option value="Approved" <?php echo $filterStatus === 'Approved' ? 'selected' : ''; ?>>Approved</option>
                 <option value="Paid" <?php echo $filterStatus === 'Paid' ? 'selected' : ''; ?>>Paid</option>
             </select>
+            <?php if ($filterDept > 0 || $filterMonth !== '' || $filterPeriod !== '' || $filterStatus !== ''): ?>
+                <a href="payroll.php?year=<?php echo $filterYear; ?>" class="btn btn-secondary btn-sm">Clear Filters</a>
+            <?php endif; ?>
         </form>
     </div>
     
@@ -158,6 +177,7 @@ require_once 'includes/header.php';
                 <thead>
                     <tr>
                         <th>Employee</th>
+                        <th>Department</th>
                         <th>Period</th>
                         <th>Gross Pay</th>
                         <th>Deductions</th>
@@ -181,7 +201,18 @@ require_once 'includes/header.php';
                                         </div>
                                     </div>
                                 </td>
-                                <td><?php echo $row['payroll_month'] . ' ' . $row['period_type'] . ', ' . $row['payroll_year']; ?></td>
+                                <td>
+                                    <?php if ($row['department_name']): ?>
+                                        <span class="badge badge-primary"><?php echo htmlspecialchars($row['department_code']); ?></span>
+                                        <br><small class="text-muted"><?php echo htmlspecialchars($row['department_name']); ?></small>
+                                    <?php else: ?>
+                                        <span class="text-muted">No Dept</span>
+                                    <?php endif; ?>
+                                </td>
+                                <td>
+                                    <strong><?php echo $row['payroll_month']; ?></strong>
+                                    <br><small class="text-muted"><?php echo $row['period_type'] . ', ' . $row['payroll_year']; ?></small>
+                                </td>
                                 <td class="currency"><?php echo formatCurrency($row['gross_pay']); ?></td>
                                 <td class="currency text-danger"><?php echo formatCurrency($row['total_deductions']); ?></td>
                                 <td class="currency font-bold"><?php echo formatCurrency($row['net_pay']); ?></td>
@@ -210,7 +241,7 @@ require_once 'includes/header.php';
                         <?php endwhile; ?>
                     <?php else: ?>
                         <tr>
-                            <td colspan="7" class="text-center text-muted" style="padding: 2rem;">
+                            <td colspan="8" class="text-center text-muted" style="padding: 2rem;">
                                 No payroll records found. <a href="payroll_create.php">Create one now</a>
                             </td>
                         </tr>

@@ -18,6 +18,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $firstName = sanitize($_POST['first_name']);
         $middleName = sanitize($_POST['middle_name']);
         $lastName = sanitize($_POST['last_name']);
+        $suffix = sanitize($_POST['suffix']);
+        $sex = sanitize($_POST['sex']);
+        $dateOfBirth = $_POST['date_of_birth'] ?: null;
+        
+        // Calculate age from date of birth
+        $age = null;
+        if ($dateOfBirth) {
+            $dob = new DateTime($dateOfBirth);
+            $now = new DateTime();
+            $age = $now->diff($dob)->y;
+        }
+        
         $email = sanitize($_POST['email']);
         $phone = sanitize($_POST['phone']);
         $address = sanitize($_POST['address']);
@@ -26,8 +38,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $posId = !empty($_POST['position_id']) ? (int)$_POST['position_id'] : null;
         $status = sanitize($_POST['employment_status']);
         
-        $stmt = $conn->prepare("INSERT INTO employees (employee_id, first_name, middle_name, last_name, email, phone, address, date_hired, department_id, position_id, employment_status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-        $stmt->bind_param("ssssssssiss", $empId, $firstName, $middleName, $lastName, $email, $phone, $address, $dateHired, $deptId, $posId, $status,);
+        $stmt = $conn->prepare("INSERT INTO employees (employee_id, first_name, middle_name, last_name, suffix, sex, date_of_birth, age, email, phone, address, date_hired, department_id, position_id, employment_status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        $stmt->bind_param("ssssssssssssiis", $empId, $firstName, $middleName, $lastName, $suffix, $sex, $dateOfBirth, $age, $email, $phone, $address, $dateHired, $deptId, $posId, $status);
         
         if ($stmt->execute()) {
             $message = 'Employee added successfully!';
@@ -45,6 +57,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $firstName = sanitize($_POST['first_name']);
         $middleName = sanitize($_POST['middle_name']);
         $lastName = sanitize($_POST['last_name']);
+        $suffix = sanitize($_POST['suffix']);
+        $sex = sanitize($_POST['sex']);
+        $dateOfBirth = $_POST['date_of_birth'] ?: null;
+        
+        // Calculate age from date of birth
+        $age = null;
+        if ($dateOfBirth) {
+            $dob = new DateTime($dateOfBirth);
+            $now = new DateTime();
+            $age = $now->diff($dob)->y;
+        }
+        
         $email = sanitize($_POST['email']);
         $phone = sanitize($_POST['phone']);
         $address = sanitize($_POST['address']);
@@ -54,8 +78,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $status = sanitize($_POST['employment_status']);
         $isActive = isset($_POST['is_active']) ? 1 : 0;
         
-        $stmt = $conn->prepare("UPDATE employees SET employee_id = ?, first_name = ?, middle_name = ?, last_name = ?, email = ?, phone = ?, address = ?, date_hired = ?, department_id = ?, position_id = ?, employment_status = ?, is_active = ? WHERE id = ?");
-        $stmt->bind_param("ssssssssisisi", $empId, $firstName, $middleName, $lastName, $email, $phone, $address, $dateHired, $deptId, $posId, $status, $isActive, $id);
+        $stmt = $conn->prepare("UPDATE employees SET employee_id = ?, first_name = ?, middle_name = ?, last_name = ?, suffix = ?, sex = ?, date_of_birth = ?, age = ?, email = ?, phone = ?, address = ?, date_hired = ?, department_id = ?, position_id = ?, employment_status = ?, is_active = ? WHERE id = ?");
+        $stmt->bind_param("ssssssssssssiisii", $empId, $firstName, $middleName, $lastName, $suffix, $sex, $dateOfBirth, $age, $email, $phone, $address, $dateHired, $deptId, $posId, $status, $isActive, $id);
         
         if ($stmt->execute()) {
             $message = 'Employee updated successfully!';
@@ -96,6 +120,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 // Get filter parameters
 $filterDept = isset($_GET['department']) ? (int)$_GET['department'] : 0;
 $filterStatus = isset($_GET['status']) ? sanitize($_GET['status']) : '';
+$filterSex = isset($_GET['sex']) ? sanitize($_GET['sex']) : '';
 
 // Build query with filters
 $whereClause = "1=1";
@@ -104,6 +129,9 @@ if ($filterDept > 0) {
 }
 if ($filterStatus !== '') {
     $whereClause .= " AND e.is_active = " . ($filterStatus === 'active' ? 1 : 0);
+}
+if ($filterSex !== '') {
+    $whereClause .= " AND e.sex = '" . $conn->real_escape_string($filterSex) . "'";
 }
 
 // Get all departments for dropdown
@@ -179,7 +207,12 @@ require_once 'includes/header.php';
                 <option value="active" <?php echo $filterStatus === 'active' ? 'selected' : ''; ?>>Active</option>
                 <option value="inactive" <?php echo $filterStatus === 'inactive' ? 'selected' : ''; ?>>Inactive</option>
             </select>
-            <?php if ($filterDept > 0 || $filterStatus !== ''): ?>
+            <select name="sex" class="form-control" style="width: auto;" onchange="this.form.submit()">
+                <option value="">All Gender</option>
+                <option value="Male" <?php echo $filterSex === 'Male' ? 'selected' : ''; ?>>Male</option>
+                <option value="Female" <?php echo $filterSex === 'Female' ? 'selected' : ''; ?>>Female</option>
+            </select>
+            <?php if ($filterDept > 0 || $filterStatus !== '' || $filterSex !== ''): ?>
                 <a href="employees.php" class="btn btn-secondary btn-sm">Clear Filters</a>
             <?php endif; ?>
         </form>
@@ -192,9 +225,10 @@ require_once 'includes/header.php';
                     <tr>
                         <th>Employee</th>
                         <th>ID</th>
+                        <th>Contact</th>
+                        <th>Age/Sex</th>
+                        <th>Date Hired</th>
                         <th>Department</th>
-                        <th>Position</th>
-                        <th>Basic Salary</th>
                         <th>Status</th>
                         <th>Actions</th>
                     </tr>
@@ -210,7 +244,16 @@ require_once 'includes/header.php';
                                         </div>
                                         <div>
                                             <div class="employee-name">
-                                                <?php echo htmlspecialchars($row['last_name'] . ', ' . $row['first_name'] . ' ' . ($row['middle_name'] ? substr($row['middle_name'], 0, 1) . '.' : '')); ?>
+                                                <?php 
+                                                $fullName = $row['last_name'] . ', ' . $row['first_name'];
+                                                if ($row['middle_name']) {
+                                                    $fullName .= ' ' . substr($row['middle_name'], 0, 1) . '.';
+                                                }
+                                                if ($row['suffix']) {
+                                                    $fullName .= ' ' . $row['suffix'];
+                                                }
+                                                echo htmlspecialchars($fullName);
+                                                ?>
                                             </div>
                                             <div class="employee-id"><?php echo htmlspecialchars($row['email'] ?: '-'); ?></div>
                                         </div>
@@ -218,21 +261,46 @@ require_once 'includes/header.php';
                                 </td>
                                 <td><code><?php echo htmlspecialchars($row['employee_id']); ?></code></td>
                                 <td>
+                                    <?php if ($row['phone']): ?>
+                                        <div><i class="fas fa-phone"></i> <?php echo htmlspecialchars($row['phone']); ?></div>
+                                    <?php endif; ?>
+                                    <?php if ($row['email']): ?>
+                                        <div><i class="fas fa-envelope"></i> <small><?php echo htmlspecialchars($row['email']); ?></small></div>
+                                    <?php endif; ?>
+                                    <?php if (!$row['phone'] && !$row['email']): ?>
+                                        <span class="text-muted">-</span>
+                                    <?php endif; ?>
+                                </td>
+                                <td>
+                                    <?php if ($row['age']): ?>
+                                        <strong><?php echo $row['age']; ?> yrs</strong>
+                                    <?php else: ?>
+                                        <span class="text-muted">-</span>
+                                    <?php endif; ?>
+                                    <br>
+                                    <?php if ($row['sex']): ?>
+                                        <small class="text-muted">
+                                            <i class="fas fa-<?php echo $row['sex'] === 'Male' ? 'mars' : 'venus'; ?>"></i>
+                                            <?php echo htmlspecialchars($row['sex']); ?>
+                                        </small>
+                                    <?php else: ?>
+                                        <small class="text-muted">-</small>
+                                    <?php endif; ?>
+                                </td>
+                                <td>
+                                    <?php if ($row['date_hired']): ?>
+                                        <strong><?php echo date('M d, Y', strtotime($row['date_hired'])); ?></strong>
+                                    <?php else: ?>
+                                        <span class="text-muted">-</span>
+                                    <?php endif; ?>
+                                </td>
+                                <td>
                                     <?php if ($row['department_name']): ?>
                                         <span class="badge badge-primary"><?php echo htmlspecialchars($row['department_code']); ?></span>
                                     <?php else: ?>
                                         <span class="text-muted">-</span>
                                     <?php endif; ?>
                                 </td>
-                                <td>
-                                    <?php if ($row['position_title']): ?>
-                                        <?php echo htmlspecialchars($row['position_title']); ?>
-                                        <br><small class="text-muted">SG-<?php echo $row['salary_grade']; ?></small>
-                                    <?php else: ?>
-                                        <span class="text-muted">-</span>
-                                    <?php endif; ?>
-                                </td>
-                                <td class="currency"><?php echo $row['basic_salary'] ? formatCurrency($row['basic_salary']) : '-'; ?></td>
                                 <td>
                                     <?php if ($row['is_active']): ?>
                                         <span class="badge badge-success">Active</span>
@@ -243,6 +311,11 @@ require_once 'includes/header.php';
                                 </td>
                                 <td>
                                     <div class="btn-group">
+                                        <button class="btn btn-info btn-icon sm" 
+                                                onclick="viewEmployee(<?php echo htmlspecialchars(json_encode($row)); ?>)"
+                                                title="View Details">
+                                            <i class="fas fa-eye"></i>
+                                        </button>
                                         <button class="btn btn-secondary btn-icon sm" 
                                                 onclick="editEmployee(<?php echo htmlspecialchars(json_encode($row)); ?>)"
                                                 title="Edit">
@@ -263,7 +336,7 @@ require_once 'includes/header.php';
                         <?php endwhile; ?>
                     <?php else: ?>
                         <tr>
-                            <td colspan="7" class="text-center text-muted" style="padding: 2rem;">
+                            <td colspan="8" class="text-center text-muted" style="padding: 2rem;">
                                 No employees found. Add your first employee above.
                             </td>
                         </tr>
@@ -314,6 +387,29 @@ require_once 'includes/header.php';
                     <div class="form-group">
                         <label class="form-label required">Last Name</label>
                         <input type="text" name="last_name" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Suffix</label>
+                        <input type="text" name="suffix" class="form-control" placeholder="Jr., Sr., III">
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Date of Birth</label>
+                        <input type="date" name="date_of_birth" class="form-control" onchange="calculateAge(this.value, 'add_age_display')">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Age</label>
+                        <input type="text" id="add_age_display" class="form-control" readonly placeholder="Auto-calculated">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Sex</label>
+                        <select name="sex" class="form-control">
+                            <option value="">-- Select --</option>
+                            <option value="Male">Male</option>
+                            <option value="Female">Female</option>
+                        </select>
                     </div>
                 </div>
                 
@@ -420,6 +516,29 @@ require_once 'includes/header.php';
                         <label class="form-label required">Last Name</label>
                         <input type="text" name="last_name" id="edit_last_name" class="form-control" required>
                     </div>
+                    <div class="form-group">
+                        <label class="form-label">Suffix</label>
+                        <input type="text" name="suffix" id="edit_suffix" class="form-control" placeholder="Jr., Sr., III">
+                    </div>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">Date of Birth</label>
+                        <input type="date" name="date_of_birth" id="edit_date_of_birth" class="form-control" onchange="calculateAge(this.value, 'edit_age_display')">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Age</label>
+                        <input type="text" id="edit_age_display" class="form-control" readonly placeholder="Auto-calculated">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Sex</label>
+                        <select name="sex" id="edit_sex" class="form-control">
+                            <option value="">-- Select --</option>
+                            <option value="Male">Male</option>
+                            <option value="Female">Female</option>
+                        </select>
+                    </div>
                 </div>
                 
                 <div class="form-row">
@@ -490,6 +609,108 @@ require_once 'includes/header.php';
     </div>
 </div>
 
+<!-- View Employee Details Modal -->
+<div class="modal-overlay" id="viewEmployeeModal">
+    <div class="modal modal-lg">
+        <div class="modal-header">
+            <h3 class="modal-title">Employee Details</h3>
+            <button class="modal-close" onclick="Modal.close('viewEmployeeModal')">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="modal-body">
+            <div class="employee-details-grid">
+                <!-- Personal Information Section -->
+                <div class="details-section">
+                    <h4 class="section-title"><i class="fas fa-user"></i> Personal Information</h4>
+                    <div class="details-row">
+                        <div class="details-label">Full Name:</div>
+                        <div class="details-value" id="view_employee_name"></div>
+                    </div>
+                    <div class="details-row">
+                        <div class="details-label">Employee ID:</div>
+                        <div class="details-value"><code id="view_employee_id"></code></div>
+                    </div>
+                    <div class="details-row">
+                        <div class="details-label">Date of Birth:</div>
+                        <div class="details-value" id="view_dob"></div>
+                    </div>
+                    <div class="details-row">
+                        <div class="details-label">Age:</div>
+                        <div class="details-value" id="view_age"></div>
+                    </div>
+                    <div class="details-row">
+                        <div class="details-label">Sex:</div>
+                        <div class="details-value" id="view_sex"></div>
+                    </div>
+                </div>
+
+                <!-- Contact Information Section -->
+                <div class="details-section">
+                    <h4 class="section-title"><i class="fas fa-address-book"></i> Contact Information</h4>
+                    <div class="details-row">
+                        <div class="details-label">Email:</div>
+                        <div class="details-value" id="view_email"></div>
+                    </div>
+                    <div class="details-row">
+                        <div class="details-label">Phone:</div>
+                        <div class="details-value" id="view_phone"></div>
+                    </div>
+                    <div class="details-row">
+                        <div class="details-label">Address:</div>
+                        <div class="details-value" id="view_address"></div>
+                    </div>
+                </div>
+
+                <!-- Employment Information Section -->
+                <div class="details-section">
+                    <h4 class="section-title"><i class="fas fa-briefcase"></i> Employment Information</h4>
+                    <div class="details-row">
+                        <div class="details-label">Date Hired:</div>
+                        <div class="details-value" id="view_date_hired"></div>
+                    </div>
+                    <div class="details-row">
+                        <div class="details-label">Department:</div>
+                        <div class="details-value" id="view_department"></div>
+                    </div>
+                    <div class="details-row">
+                        <div class="details-label">Position:</div>
+                        <div class="details-value" id="view_position"></div>
+                    </div>
+                    <div class="details-row">
+                        <div class="details-label">Basic Salary:</div>
+                        <div class="details-value" id="view_salary"></div>
+                    </div>
+                    <div class="details-row">
+                        <div class="details-label">Employment Status:</div>
+                        <div class="details-value" id="view_status"></div>
+                    </div>
+                    <div class="details-row">
+                        <div class="details-label">Status:</div>
+                        <div class="details-value"><span id="view_active" class="badge"></span></div>
+                    </div>
+                </div>
+
+                <!-- System Information Section -->
+                <div class="details-section">
+                    <h4 class="section-title"><i class="fas fa-info-circle"></i> System Information</h4>
+                    <div class="details-row">
+                        <div class="details-label">Created At:</div>
+                        <div class="details-value" id="view_created"></div>
+                    </div>
+                    <div class="details-row">
+                        <div class="details-label">Last Updated:</div>
+                        <div class="details-value" id="view_updated"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" onclick="Modal.close('viewEmployeeModal')">Close</button>
+        </div>
+    </div>
+</div>
+
 <!-- Delete Form (hidden) -->
 <form method="POST" id="deleteForm" style="display: none;">
     <input type="hidden" name="action" value="delete">
@@ -497,12 +718,69 @@ require_once 'includes/header.php';
 </form>
 
 <script>
+function calculateAge(dateOfBirth, displayElementId) {
+    if (!dateOfBirth) {
+        document.getElementById(displayElementId).value = '';
+        return;
+    }
+    
+    const dob = new Date(dateOfBirth);
+    const today = new Date();
+    let age = today.getFullYear() - dob.getFullYear();
+    const monthDiff = today.getMonth() - dob.getMonth();
+    
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < dob.getDate())) {
+        age--;
+    }
+    
+    document.getElementById(displayElementId).value = age + ' years old';
+}
+
+function viewEmployee(data) {
+    // Populate view modal with employee data
+    document.getElementById('view_employee_name').textContent = data.last_name + ', ' + data.first_name + 
+        (data.middle_name ? ' ' + data.middle_name.charAt(0) + '.' : '') + 
+        (data.suffix ? ' ' + data.suffix : '');
+    document.getElementById('view_employee_id').textContent = data.employee_id;
+    document.getElementById('view_email').textContent = data.email || '-';
+    document.getElementById('view_phone').textContent = data.phone || '-';
+    document.getElementById('view_address').textContent = data.address || '-';
+    document.getElementById('view_dob').textContent = data.date_of_birth ? new Date(data.date_of_birth).toLocaleDateString('en-US', {year: 'numeric', month: 'long', day: 'numeric'}) : '-';
+    document.getElementById('view_age').textContent = data.age ? data.age + ' years old' : '-';
+    document.getElementById('view_sex').textContent = data.sex || '-';
+    document.getElementById('view_date_hired').textContent = data.date_hired ? new Date(data.date_hired).toLocaleDateString('en-US', {year: 'numeric', month: 'long', day: 'numeric'}) : '-';
+    document.getElementById('view_department').textContent = data.department_name || '-';
+    document.getElementById('view_position').textContent = data.position_title ? data.position_title + ' (SG-' + data.salary_grade + ')' : '-';
+    document.getElementById('view_salary').textContent = data.basic_salary ? '₱' + parseFloat(data.basic_salary).toLocaleString('en-PH', {minimumFractionDigits: 2}) : '-';
+    document.getElementById('view_status').textContent = data.employment_status;
+    document.getElementById('view_active').textContent = data.is_active == 1 ? 'Active' : 'Inactive';
+    document.getElementById('view_created').textContent = data.created_at ? new Date(data.created_at).toLocaleString('en-US') : '-';
+    document.getElementById('view_updated').textContent = data.updated_at ? new Date(data.updated_at).toLocaleString('en-US') : '-';
+    
+    // Set status badge class
+    const statusBadge = document.getElementById('view_active');
+    statusBadge.className = 'badge ' + (data.is_active == 1 ? 'badge-success' : 'badge-danger');
+    
+    Modal.open('viewEmployeeModal');
+}
+
 function editEmployee(data) {
     document.getElementById('edit_id').value = data.id;
     document.getElementById('edit_employee_id').value = data.employee_id;
     document.getElementById('edit_first_name').value = data.first_name;
     document.getElementById('edit_middle_name').value = data.middle_name || '';
     document.getElementById('edit_last_name').value = data.last_name;
+    document.getElementById('edit_suffix').value = data.suffix || '';
+    document.getElementById('edit_sex').value = data.sex || '';
+    document.getElementById('edit_date_of_birth').value = data.date_of_birth || '';
+    
+    // Calculate and display age
+    if (data.date_of_birth) {
+        calculateAge(data.date_of_birth, 'edit_age_display');
+    } else {
+        document.getElementById('edit_age_display').value = '';
+    }
+    
     document.getElementById('edit_email').value = data.email || '';
     document.getElementById('edit_phone').value = data.phone || '';
     document.getElementById('edit_address').value = data.address || '';
@@ -521,5 +799,73 @@ function deleteEmployee(id, name) {
     }
 }
 </script>
+
+<style>
+.employee-details-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.5rem;
+}
+
+@media (max-width: 768px) {
+    .employee-details-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.details-section {
+    background: var(--gray-50);
+    padding: 1rem;
+    border-radius: 8px;
+    border: 1px solid var(--gray-200);
+}
+
+.section-title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--gray-800);
+    margin: 0 0 1rem 0;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid var(--primary);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.section-title i {
+    color: var(--primary);
+}
+
+.details-row {
+    display: grid;
+    grid-template-columns: 140px 1fr;
+    gap: 1rem;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid var(--gray-200);
+}
+
+.details-row:last-child {
+    border-bottom: none;
+}
+
+.details-label {
+    font-weight: 600;
+    color: var(--gray-700);
+    font-size: 0.875rem;
+}
+
+.details-value {
+    color: var(--gray-900);
+    font-size: 0.875rem;
+    word-break: break-word;
+}
+
+.details-value code {
+    background: var(--gray-200);
+    padding: 0.125rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.875rem;
+}
+</style>
 
 <?php require_once 'includes/footer.php'; ?>

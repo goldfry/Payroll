@@ -220,9 +220,10 @@ require_once 'includes/header.php';
                 <i class="fas fa-calculator"></i>
                 Generate Payroll
             </a>
-            <a href="reports.php" class="btn btn-secondary btn-lg" style="justify-content: flex-start;">
+            
+             <a href="history.php" class="btn btn-secondary btn-lg" style="justify-content: flex-start;">
                 <i class="fas fa-chart-bar"></i>
-                View Reports
+                History
             </a>
         </div>
     </div>

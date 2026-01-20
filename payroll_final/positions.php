@@ -25,10 +25,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $grade = (int)$_POST['salary_grade'];
         $step = (int)$_POST['salary_step'];
         $salary = (float)$_POST['basic_salary'];
+        $salaryId = !empty($_POST['salary_id']) ? (int)$_POST['salary_id'] : null;
         $deptId = !empty($_POST['department_id']) ? (int)$_POST['department_id'] : null;
         
-        $stmt = $conn->prepare("INSERT INTO positions (position_title, salary_grade, salary_step, basic_salary, department_id) VALUES (?, ?, ?, ?, ?)");
-        $stmt->bind_param("siidi", $title, $grade, $step, $salary, $deptId);
+        $stmt = $conn->prepare("INSERT INTO positions (position_title, salary_grade, salary_step, basic_salary, salary_id, department_id) VALUES (?, ?, ?, ?, ?, ?)");
+        $stmt->bind_param("siidii", $title, $grade, $step, $salary, $salaryId, $deptId);
         
         if ($stmt->execute()) {
             $message = 'Position added successfully!';
@@ -54,10 +55,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $grade = (int)$_POST['salary_grade'];
         $step = (int)$_POST['salary_step'];
         $salary = (float)$_POST['basic_salary'];
+        $salaryId = !empty($_POST['salary_id']) ? (int)$_POST['salary_id'] : null;
         $deptId = !empty($_POST['department_id']) ? (int)$_POST['department_id'] : null;
         
-        $stmt = $conn->prepare("UPDATE positions SET position_title = ?, salary_grade = ?, salary_step = ?, basic_salary = ?, department_id = ? WHERE id = ?");
-        $stmt->bind_param("siidii", $title, $grade, $step, $salary, $deptId, $id);
+        $stmt = $conn->prepare("UPDATE positions SET position_title = ?, salary_grade = ?, salary_step = ?, basic_salary = ?, salary_id = ?, department_id = ? WHERE id = ?");
+        $stmt->bind_param("siidiii", $title, $grade, $step, $salary, $salaryId, $deptId, $id);
         
         if ($stmt->execute()) {
             $message = 'Position updated successfully!';
@@ -95,6 +97,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
+// Get filter parameters
+$filterDept = isset($_GET['department']) ? (int)$_GET['department'] : 0;
+
+// Build query with filters
+$whereClause = "1=1";
+if ($filterDept > 0) {
+    $whereClause .= " AND p.department_id = $filterDept";
+}
+
 // Get all salary grades for dropdown
 $salaryGrades = $conn->query("SELECT * FROM step_inc ORDER BY salary_grade");
 
@@ -103,10 +114,13 @@ $departments = $conn->query("SELECT id, department_name, department_code FROM de
 
 // Get all positions with department and employee count
 $positions = $conn->query("
-    SELECT p.*, d.department_name, d.department_code, COUNT(e.id) as employee_count 
+    SELECT p.*, d.department_name, d.department_code, 
+           s.id as step_inc_id, COUNT(e.id) as employee_count 
     FROM positions p 
     LEFT JOIN departments d ON p.department_id = d.id
+    LEFT JOIN step_inc s ON p.salary_grade = s.salary_grade
     LEFT JOIN employees e ON p.id = e.position_id AND e.is_active = 1
+    WHERE $whereClause
     GROUP BY p.id 
     ORDER BY p.salary_grade, p.position_title
 ");
@@ -148,11 +162,33 @@ require_once 'includes/header.php';
             </button>
         </div>
     </div>
+    
+    <!-- Filters -->
+    <div class="card-body" style="padding: var(--space-md) var(--space-xl); border-bottom: 1px solid var(--gray-100);">
+        <form method="GET" class="filter-bar">
+            <select name="department" class="form-control" style="width: auto; min-width: 200px;" onchange="this.form.submit()">
+                <option value="0">All Departments</option>
+                <?php 
+                $departments->data_seek(0);
+                while($dept = $departments->fetch_assoc()): 
+                ?>
+                    <option value="<?php echo $dept['id']; ?>" <?php echo $filterDept == $dept['id'] ? 'selected' : ''; ?>>
+                        <?php echo htmlspecialchars($dept['department_name']); ?>
+                    </option>
+                <?php endwhile; ?>
+            </select>
+            <?php if ($filterDept > 0): ?>
+                <a href="positions.php" class="btn btn-secondary btn-sm">Clear Filters</a>
+            <?php endif; ?>
+        </form>
+    </div>
+    
     <div class="card-body" style="padding: 0;">
         <div class="table-container">
             <table class="data-table" id="positionsTable">
                 <thead>
                     <tr>
+                        <th>Position ID</th>
                         <th>SG</th>
                         <th>Step</th>
                         <th>Position Title</th>
@@ -166,15 +202,16 @@ require_once 'includes/header.php';
                     <?php if ($positions && $positions->num_rows > 0): ?>
                         <?php while($row = $positions->fetch_assoc()): ?>
                             <tr>
+                                <td><code>POS-<?php echo str_pad($row['id'], 4, '0', STR_PAD_LEFT); ?></code></td>
                                 <td><span class="badge badge-info">SG-<?php echo $row['salary_grade']; ?></span></td>
                                 <td><span class="badge badge-secondary">Step <?php echo $row['salary_step'] ?? 1; ?></span></td>
                                 <td><strong><?php echo htmlspecialchars($row['position_title']); ?></strong></td>
                                 <td>
                                     <?php if ($row['department_name']): ?>
                                         <span class="badge badge-primary"><?php echo htmlspecialchars($row['department_code']); ?></span>
-                                        <?php echo htmlspecialchars($row['department_name']); ?>
+                                        <br><small class="text-muted"><?php echo htmlspecialchars($row['department_name']); ?></small>
                                     <?php else: ?>
-                                        <span class="text-muted">-</span>
+                                        <span class="text-muted">No Department</span>
                                     <?php endif; ?>
                                 </td>
                                 <td class="currency"><?php echo formatCurrency($row['basic_salary']); ?></td>
@@ -201,7 +238,7 @@ require_once 'includes/header.php';
                         <?php endwhile; ?>
                     <?php else: ?>
                         <tr>
-                            <td colspan="7" class="text-center text-muted" style="padding: 2rem;">
+                            <td colspan="8" class="text-center text-muted" style="padding: 2rem;">
                                 No positions found. Add your first position above.
                             </td>
                         </tr>
@@ -224,6 +261,7 @@ require_once 'includes/header.php';
         <form method="POST" id="addPositionForm">
             <input type="hidden" name="action" value="add">
             <input type="hidden" name="basic_salary" id="add_basic_salary">
+            <input type="hidden" name="salary_id" id="add_salary_id">
             <div class="modal-body">
                 <div class="form-group">
                     <label class="form-label required">Position Title</label>
@@ -382,6 +420,22 @@ require_once 'includes/header.php';
                     <input type="text" id="add_custom_position" name="custom_position_title" class="form-control" style="display: none; margin-top: 10px;" placeholder="Enter custom position title">
                 </div>
                 
+                <div class="form-group">
+                    <label class="form-label required">Department</label>
+                    <select name="department_id" class="form-control" required>
+                        <option value="">-- Select Department --</option>
+                        <?php 
+                        $departments->data_seek(0);
+                        while($dept = $departments->fetch_assoc()): 
+                        ?>
+                            <option value="<?php echo $dept['id']; ?>">
+                                [<?php echo htmlspecialchars($dept['department_code']); ?>] <?php echo htmlspecialchars($dept['department_name']); ?>
+                            </option>
+                        <?php endwhile; ?>
+                    </select>
+                    <small class="text-muted">Department assignment is now required for better organization</small>
+                </div>
+                
                 <div class="form-row">
                     <div class="form-group">
                         <label class="form-label required">Salary Grade</label>
@@ -392,6 +446,7 @@ require_once 'includes/header.php';
                             while($sg = $salaryGrades->fetch_assoc()): 
                             ?>
                                 <option value="<?php echo $sg['salary_grade']; ?>" 
+                                        data-id="<?php echo $sg['id']; ?>"
                                         data-step1="<?php echo $sg['step_1']; ?>"
                                         data-step2="<?php echo $sg['step_2']; ?>"
                                         data-step3="<?php echo $sg['step_3']; ?>"
@@ -429,21 +484,6 @@ require_once 'includes/header.php';
                     </div>
                     <small class="text-muted">Salary is automatically calculated based on the selected grade and step</small>
                 </div>
-                
-                <div class="form-group">
-                    <label class="form-label">Department</label>
-                    <select name="department_id" class="form-control">
-                        <option value="">-- Select Department (Optional) --</option>
-                        <?php 
-                        $departments->data_seek(0);
-                        while($dept = $departments->fetch_assoc()): 
-                        ?>
-                            <option value="<?php echo $dept['id']; ?>">
-                                [<?php echo htmlspecialchars($dept['department_code']); ?>] <?php echo htmlspecialchars($dept['department_name']); ?>
-                            </option>
-                        <?php endwhile; ?>
-                    </select>
-                </div>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" onclick="Modal.close('addPositionModal')">Cancel</button>
@@ -468,6 +508,7 @@ require_once 'includes/header.php';
             <input type="hidden" name="action" value="edit">
             <input type="hidden" name="id" id="edit_id">
             <input type="hidden" name="basic_salary" id="edit_basic_salary">
+            <input type="hidden" name="salary_id" id="edit_salary_id">
             <div class="modal-body">
                 <div class="form-group">
                     <label class="form-label required">Position Title</label>
@@ -626,6 +667,21 @@ require_once 'includes/header.php';
                     <input type="text" id="edit_custom_position" name="custom_position_title" class="form-control" style="display: none; margin-top: 10px;" placeholder="Enter custom position title">
                 </div>
                 
+                <div class="form-group">
+                    <label class="form-label required">Department</label>
+                    <select name="department_id" id="edit_department" class="form-control" required>
+                        <option value="">-- Select Department --</option>
+                        <?php 
+                        $departments->data_seek(0);
+                        while($dept = $departments->fetch_assoc()): 
+                        ?>
+                            <option value="<?php echo $dept['id']; ?>">
+                                [<?php echo htmlspecialchars($dept['department_code']); ?>] <?php echo htmlspecialchars($dept['department_name']); ?>
+                            </option>
+                        <?php endwhile; ?>
+                    </select>
+                </div>
+                
                 <div class="form-row">
                     <div class="form-group">
                         <label class="form-label required">Salary Grade</label>
@@ -636,6 +692,7 @@ require_once 'includes/header.php';
                             while($sg = $salaryGrades->fetch_assoc()): 
                             ?>
                                 <option value="<?php echo $sg['salary_grade']; ?>" 
+                                        data-id="<?php echo $sg['id']; ?>"
                                         data-step1="<?php echo $sg['step_1']; ?>"
                                         data-step2="<?php echo $sg['step_2']; ?>"
                                         data-step3="<?php echo $sg['step_3']; ?>"
@@ -672,21 +729,6 @@ require_once 'includes/header.php';
                         <input type="text" id="edit_salary_display" class="form-control" readonly style="background-color: #f0f0f0; font-weight: bold;">
                     </div>
                     <small class="text-muted">Salary is automatically calculated based on the selected grade and step</small>
-                </div>
-                
-                <div class="form-group">
-                    <label class="form-label">Department</label>
-                    <select name="department_id" id="edit_department" class="form-control">
-                        <option value="">-- Select Department (Optional) --</option>
-                        <?php 
-                        $departments->data_seek(0);
-                        while($dept = $departments->fetch_assoc()): 
-                        ?>
-                            <option value="<?php echo $dept['id']; ?>">
-                                [<?php echo htmlspecialchars($dept['department_code']); ?>] <?php echo htmlspecialchars($dept['department_name']); ?>
-                            </option>
-                        <?php endwhile; ?>
-                    </select>
                 </div>
             </div>
             <div class="modal-footer">
@@ -725,16 +767,20 @@ function updateSalaryAdd() {
     const stepSelect = document.getElementById('add_salary_step');
     const salaryInput = document.getElementById('add_basic_salary');
     const salaryDisplay = document.getElementById('add_salary_display');
+    const salaryIdInput = document.getElementById('add_salary_id');
     
     const selectedOption = gradeSelect.options[gradeSelect.selectedIndex];
     const step = stepSelect.value;
     
     if (selectedOption.value && step) {
         const salary = selectedOption.getAttribute('data-step' + step);
+        const salaryId = selectedOption.getAttribute('data-id');
         salaryInput.value = salary;
+        salaryIdInput.value = salaryId;
         salaryDisplay.value = parseFloat(salary).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     } else {
         salaryInput.value = '';
+        salaryIdInput.value = '';
         salaryDisplay.value = '';
     }
 }
@@ -744,16 +790,20 @@ function updateSalaryEdit() {
     const stepSelect = document.getElementById('edit_salary_step');
     const salaryInput = document.getElementById('edit_basic_salary');
     const salaryDisplay = document.getElementById('edit_salary_display');
+    const salaryIdInput = document.getElementById('edit_salary_id');
     
     const selectedOption = gradeSelect.options[gradeSelect.selectedIndex];
     const step = stepSelect.value;
     
     if (selectedOption.value && step) {
         const salary = selectedOption.getAttribute('data-step' + step);
+        const salaryId = selectedOption.getAttribute('data-id');
         salaryInput.value = salary;
+        salaryIdInput.value = salaryId;
         salaryDisplay.value = parseFloat(salary).toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     } else {
         salaryInput.value = '';
+        salaryIdInput.value = '';
         salaryDisplay.value = '';
     }
 }
