@@ -118,7 +118,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 // Get filter parameters
-$filterDept = isset($_GET['department']) ? (int)$_GET['department'] : 0;
+// Check both 'department_id' (from departments.php) and 'department' (from filter dropdown)
+$filterDept = isset($_GET['department_id']) ? (int)$_GET['department_id'] : (isset($_GET['department']) ? (int)$_GET['department'] : 0);
 $filterStatus = isset($_GET['status']) ? sanitize($_GET['status']) : '';
 $filterSex = isset($_GET['sex']) ? sanitize($_GET['sex']) : '';
 
@@ -158,10 +159,16 @@ require_once 'includes/header.php';
     <div class="breadcrumb">
         <a href="index.php"><i class="fas fa-home"></i></a>
         <span>/</span>
-        <span>Employees</span>
+        <?php if ($filterDept > 0): ?>
+            <a href="departments.php">Departments</a>
+            <span>/</span>
+            <span>Employees</span>
+        <?php else: ?>
+            <span>Employees</span>
+        <?php endif; ?>
     </div>
     <h1 class="page-title">Employees</h1>
-    <p class="page-subtitle">Manage employee records</p>
+    <p class="page-subtitle">Manage employee records<?php if ($filterDept > 0): ?> - Filtered by Department<?php endif; ?></p>
 </div>
 
 <?php if ($message): ?>
@@ -191,6 +198,11 @@ require_once 'includes/header.php';
     <!-- Filters -->
     <div class="card-body" style="padding: var(--space-md) var(--space-xl); border-bottom: 1px solid var(--gray-100);">
         <form method="GET" class="filter-bar">
+            <!-- Preserve department_id if it came from departments.php -->
+            <?php if (isset($_GET['department_id'])): ?>
+                <input type="hidden" name="department_id" value="<?php echo $filterDept; ?>">
+            <?php endif; ?>
+            
             <select name="department" class="form-control" style="width: auto; min-width: 200px;" onchange="this.form.submit()">
                 <option value="0">All Departments</option>
                 <?php 
@@ -337,7 +349,7 @@ require_once 'includes/header.php';
                     <?php else: ?>
                         <tr>
                             <td colspan="8" class="text-center text-muted" style="padding: 2rem;">
-                                No employees found. Add your first employee above.
+                                No employees found<?php if ($filterDept > 0): ?> in this department<?php endif; ?>. <?php if ($filterDept == 0): ?>Add your first employee above.<?php endif; ?>
                             </td>
                         </tr>
                     <?php endif; ?>
@@ -433,35 +445,19 @@ require_once 'includes/header.php';
                     <textarea name="address" class="form-control" rows="2"></textarea>
                 </div>
                 
-                <div class="form-row">
-                    <div class="form-group">
-                        <label class="form-label">Department</label>
-                        <select name="department_id" class="form-control">
-                            <option value="">-- Select Department --</option>
-                            <?php 
-                            $departments->data_seek(0);
-                            while($dept = $departments->fetch_assoc()): 
-                            ?>
-                                <option value="<?php echo $dept['id']; ?>">
-                                    [<?php echo htmlspecialchars($dept['department_code']); ?>] <?php echo htmlspecialchars($dept['department_name']); ?>
-                                </option>
-                            <?php endwhile; ?>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Position</label>
-                        <select name="position_id" class="form-control">
-                            <option value="">-- Select Position --</option>
-                            <?php 
-                            $positions->data_seek(0);
-                            while($pos = $positions->fetch_assoc()): 
-                            ?>
-                                <option value="<?php echo $pos['id']; ?>">
-                                    [SG-<?php echo $pos['salary_grade']; ?>] <?php echo htmlspecialchars($pos['position_title']); ?> - <?php echo formatCurrency($pos['basic_salary']); ?>
-                                </option>
-                            <?php endwhile; ?>
-                        </select>
-                    </div>
+                <div class="form-group">
+                    <label class="form-label">Department</label>
+                    <select name="department_id" class="form-control">
+                        <option value="">-- Select Department --</option>
+                        <?php 
+                        $departments->data_seek(0);
+                        while($dept = $departments->fetch_assoc()): 
+                        ?>
+                            <option value="<?php echo $dept['id']; ?>" <?php echo ($filterDept > 0 && $filterDept == $dept['id']) ? 'selected' : ''; ?>>
+                                [<?php echo htmlspecialchars($dept['department_code']); ?>] <?php echo htmlspecialchars($dept['department_name']); ?>
+                            </option>
+                        <?php endwhile; ?>
+                    </select>
                 </div>
             </div>
             <div class="modal-footer">

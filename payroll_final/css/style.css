@@ -308,7 +308,7 @@ img {
 .card-title {
     font-size: 1.125rem;
     font-weight: 700;
-    color: var(--gray-900);
+    color: var(--blue-900);
     display: flex;
     align-items: center;
     gap: var(--space-sm);
@@ -387,7 +387,7 @@ img {
     font-size: 1.5rem;
     margin-bottom: var(--space-md);
     background: var(--primary-100);
-    color: var(--primary-600);
+   
 }
 
 .stat-card.success .stat-icon {
@@ -596,7 +596,7 @@ textarea.form-control {
 .btn-primary:hover:not(:disabled) {
     background: linear-gradient(135deg, var(--primary-600), var(--primary-700));
     transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(45, 99, 148, 0.4);
+    box-shadow: 0 6px 20px rgba(98, 148, 45, 0.4);
 }
 
 .btn-secondary {

@@ -45,10 +45,10 @@
                         <i class="fas fa-briefcase"></i>
                         <span>Positions</span>
                     </a>
-                    <a href="employees.php" class="nav-item">
+                    <!-- <a href="employees.php" class="nav-item">
                         <i class="fas fa-users"></i>
                         <span>Employees</span>
-                    </a>
+                    </a> -->
                     <a href="salary.php" class="nav-item">
                         <i class="fas fa-money-bill-wave"></i>
                         <span>Salary</span>

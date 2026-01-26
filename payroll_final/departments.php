@@ -53,9 +53,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($action === 'delete') {
         $id = (int)$_POST['id'];
         
-        // Check if department has employees
-        $check = $conn->query("SELECT COUNT(*) as count FROM employees WHERE department_id = $id");
-        $count = $check->fetch_assoc()['count'];
+        // Check if department has employees - properly filter by department_id
+        $stmt = $conn->prepare("SELECT COUNT(*) as count FROM employees WHERE department_id = ? AND is_active = 1");
+        $stmt->bind_param("i", $id);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $count = $result->fetch_assoc()['count'];
+        $stmt->close();
         
         if ($count > 0) {
             $message = "Cannot delete department. It has $count employee(s) assigned.";
@@ -76,11 +80,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-// Get all departments with employee count
+// Get all departments with employee count - properly filtered by department
 $departments = $conn->query("
-    SELECT d.*, COUNT(e.id) as employee_count 
+    SELECT d.*, 
+           COUNT(CASE WHEN e.is_active = 1 THEN 1 END) as employee_count 
     FROM departments d 
-    LEFT JOIN employees e ON d.id = e.department_id AND e.is_active = 1
+    LEFT JOIN employees e ON d.id = e.department_id
     GROUP BY d.id 
     ORDER BY d.department_name
 ");
@@ -150,6 +155,11 @@ require_once 'includes/header.php';
                                 <td class="text-muted"><?php echo date('M d, Y', strtotime($row['created_at'])); ?></td>
                                 <td>
                                     <div class="btn-group">
+                                        <button class="btn btn-info btn-icon sm" 
+                                                onclick="window.location.href='employees.php?department_id=<?php echo $row['id']; ?>'"
+                                                title="View Employees">
+                                            <i class="fas fa-users"></i>
+                                        </button>
                                         <button class="btn btn-secondary btn-icon sm" 
                                                 onclick="editDepartment(<?php echo htmlspecialchars(json_encode($row)); ?>)"
                                                 title="Edit">

@@ -1,3 +1,5 @@
+    <!-- Department Summary -->
+
 <?php
 /**
  * Payroll System - Dashboard
