@@ -379,16 +379,8 @@ table.dataTable thead th.sorting_desc:after {
                 <input type="hidden" name="department_id" value="<?php echo $filterDept; ?>">
             <?php endif; ?>
             
-            <select name="department" class="form-control" style="width: auto; min-width: 200px;" onchange="this.form.submit()">
-                <option value="0">All Departments</option>
-                <?php 
-                $departments->data_seek(0);
-                while($dept = $departments->fetch_assoc()): 
-                ?>
-                    <option value="<?php echo $dept['id']; ?>" <?php echo $filterDept == $dept['id'] ? 'selected' : ''; ?>>
-                        <?php echo htmlspecialchars($dept['department_name']); ?>
-                    </option>
-                <?php endwhile; ?>
+           
+              
             </select>
             <select name="status" class="form-control" style="width: auto;" onchange="this.form.submit()">
                 <option value="">All Status</option>
@@ -401,7 +393,7 @@ table.dataTable thead th.sorting_desc:after {
                 <option value="Female" <?php echo $filterSex === 'Female' ? 'selected' : ''; ?>>Female</option>
             </select>
             <?php if ($filterDept > 0 || $filterStatus !== '' || $filterSex !== ''): ?>
-                <a href="employees.php" class="btn btn-secondary btn-sm">Clear Filters</a>
+         
             <?php endif; ?>
         </form>
     </div>
