@@ -2,6 +2,7 @@
 /**
  * Payroll System - Print Payroll (BCD City Hall Format)
  * Official General Payroll format for Bacolod City
+ * Shows ONLY PAID records and combines both periods for full month
  */
 
 require_once 'includes/config.php';
@@ -27,9 +28,9 @@ if (!$dept) {
 }
 
 // Get payroll records for this department and month - ONLY PAID STATUS
+// Combines both periods (1-15 and 16-30/31) and groups by employee
 $payrollRecords = $conn->query("
     SELECT 
-        p.*,
         e.employee_id as emp_number,
         e.first_name,
         e.last_name,
@@ -38,7 +39,22 @@ $payrollRecords = $conn->query("
         pos.position_title,
         pos.salary_grade,
         s.step_no,
-        s.salary_rate
+        s.salary_rate,
+        SUM(p.basic_salary) as basic_salary,
+        SUM(p.pera) as pera,
+        SUM(p.gross_pay) as gross_pay,
+        SUM(p.wtax) as wtax,
+        SUM(p.philhealth) as philhealth,
+        SUM(p.gsis) as gsis,
+        SUM(p.pagibig) as pagibig,
+        SUM(p.provident) as provident,
+        SUM(p.bcgeu) as bcgeu,
+        SUM(p.nocgem) as nocgem,
+        SUM(p.bacgem) as bacgem,
+        SUM(p.other_deductions) as other_deductions,
+        SUM(p.total_deductions) as total_deductions,
+        SUM(p.net_pay) as net_pay,
+        GROUP_CONCAT(DISTINCT p.period_type ORDER BY p.period_type SEPARATOR ', ') as periods_included
     FROM payroll p
     LEFT JOIN employees e ON p.employee_id = e.id
     LEFT JOIN positions pos ON e.position_id = pos.id
@@ -47,7 +63,9 @@ $payrollRecords = $conn->query("
       AND p.payroll_month = '$month' 
       AND p.payroll_year = $year
       AND p.status = 'Paid'
-    ORDER BY e.last_name, e.first_name, p.period_type
+    GROUP BY e.id, e.employee_id, e.first_name, e.last_name, e.middle_name, 
+             e.date_hired, pos.position_title, pos.salary_grade, s.step_no, s.salary_rate
+    ORDER BY e.last_name, e.first_name
 ");
 
 // Calculate totals
@@ -62,6 +80,9 @@ $totals = [
     'total_deductions' => 0,
     'net_pay' => 0
 ];
+
+// Check if there are any paid records
+$hasPaidRecords = ($payrollRecords && $payrollRecords->num_rows > 0);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -156,6 +177,17 @@ $totals = [
         
         .payroll-info-label {
             font-weight: bold;
+        }
+        
+        .paid-status {
+            background: #d1e7dd;
+            color: #0f5132;
+            padding: 5px 15px;
+            border-radius: 5px;
+            font-weight: bold;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
         }
         
         /* Table */
@@ -264,6 +296,34 @@ $totals = [
             color: #333;
         }
         
+        /* No Records Message */
+        .no-records {
+            text-align: center;
+            padding: 60px 20px;
+            background: #fff3cd;
+            border: 2px solid #ffc107;
+            border-radius: 10px;
+            margin: 40px 0;
+        }
+        
+        .no-records i {
+            font-size: 48px;
+            color: #856404;
+            margin-bottom: 20px;
+            display: block;
+        }
+        
+        .no-records h3 {
+            font-size: 20pt;
+            color: #856404;
+            margin-bottom: 10px;
+        }
+        
+        .no-records p {
+            font-size: 11pt;
+            color: #856404;
+        }
+        
         /* Print styles */
         @media print {
             body {
@@ -327,11 +387,17 @@ $totals = [
         .btn-back:hover {
             background: #4b5563;
         }
+        
+        .btn-print:disabled {
+            background: #d1d5db;
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
     </style>
 </head>
 <body>
     <div class="print-controls no-print">
-        <button class="btn-print" onclick="window.print()">
+        <button class="btn-print" onclick="window.print()" <?php echo !$hasPaidRecords ? 'disabled' : ''; ?>>
             <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
                 <path d="M2.5 8a.5.5 0 1 0 0-1 .5.5 0 0 0 0 1z"/>
                 <path d="M5 1a2 2 0 0 0-2 2v2H2a2 2 0 0 0-2 2v3a2 2 0 0 0 2 2h1v1a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2v-1h1a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-1V3a2 2 0 0 0-2-2H5zM4 3a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2H4V3zm1 5a2 2 0 0 0-2 2v1H2a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-1v-1a2 2 0 0 0-2-2H5zm7 2v3a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1z"/>
@@ -363,20 +429,22 @@ $totals = [
             
             <div class="payroll-info">
                 <div class="payroll-info-item">
-                    <span class="payroll-info-label">Month:</span>
-                    <span><?php echo $month . ' ' . $year; ?></span>
+                    <span class="payroll-info-label">Period:</span>
+                    <span><?php echo $month . ' (Full Month), ' . $year; ?></span>
                 </div>
                 <div class="payroll-info-item">
                     <span class="payroll-info-label">Department:</span>
                     <span><?php echo htmlspecialchars($dept['department_code']); ?></span>
                 </div>
                 <div class="payroll-info-item">
-                    <span class="payroll-info-label">Fund:</span>
-                    <span>General Fund</span>
+                    <span class="paid-status">
+                        🔒 PAID ONLY
+                    </span>
                 </div>
             </div>
         </div>
         
+        <?php if ($hasPaidRecords): ?>
         <!-- Main Table -->
         <table class="payroll-table">
             <thead>
@@ -386,7 +454,6 @@ $totals = [
                     <th rowspan="2" class="col-position">Position/Designation</th>
                     <th rowspan="2" class="col-sg">SG</th>
                     <th rowspan="2" class="col-step">Step</th>
-                    <th rowspan="2" style="width: 60px;">Period</th>
                     <th colspan="3">EARNINGS</th>
                     <th colspan="6">DEDUCTIONS</th>
                     <th rowspan="2" class="col-money">Net Amount</th>
@@ -407,39 +474,37 @@ $totals = [
             <tbody>
                 <?php 
                 $rowNum = 1;
-                if ($payrollRecords && $payrollRecords->num_rows > 0):
-                    while($row = $payrollRecords->fetch_assoc()): 
-                        $empName = strtoupper($row['last_name'] . ', ' . $row['first_name']);
-                        if ($row['middle_name']) {
-                            $empName .= ' ' . strtoupper(substr($row['middle_name'], 0, 1)) . '.';
-                        }
-                        
-                        // Get step from date_hired
-                        $step = 1;
-                        if ($row['date_hired']) {
-                            $hireDate = new DateTime($row['date_hired']);
-                            $today = new DateTime();
-                            $years = $hireDate->diff($today)->y;
-                            $step = min(8, floor($years / 3) + 1);
-                        }
-                        
-                        // Use salary rate from salary table if available
-                        $basicSalary = $row['salary_rate'] ? $row['salary_rate'] : $row['basic_salary'];
-                        $grossPay = $basicSalary + $row['pera'];
-                        
-                        // Other deductions combined
-                        $otherDed = $row['provident'] + $row['bcgeu'] + $row['nocgem'] + $row['bacgem'] + $row['other_deductions'];
-                        
-                        // Update totals
-                        $totals['basic_salary'] += $basicSalary;
-                        $totals['pera'] += $row['pera'];
-                        $totals['gross_pay'] += $grossPay;
-                        $totals['wtax'] += $row['wtax'];
-                        $totals['gsis'] += $row['gsis'];
-                        $totals['philhealth'] += $row['philhealth'];
-                        $totals['pagibig'] += $row['pagibig'];
-                        $totals['total_deductions'] += $row['total_deductions'];
-                        $totals['net_pay'] += $row['net_pay'];
+                while($row = $payrollRecords->fetch_assoc()): 
+                    $empName = strtoupper($row['last_name'] . ', ' . $row['first_name']);
+                    if ($row['middle_name']) {
+                        $empName .= ' ' . strtoupper(substr($row['middle_name'], 0, 1)) . '.';
+                    }
+                    
+                    // Get step from date_hired
+                    $step = 1;
+                    if ($row['date_hired']) {
+                        $hireDate = new DateTime($row['date_hired']);
+                        $today = new DateTime();
+                        $years = $hireDate->diff($today)->y;
+                        $step = min(8, floor($years / 3) + 1);
+                    }
+                    
+                    // Use salary rate from salary table if available, otherwise use aggregated basic salary
+                    $basicSalary = $row['salary_rate'] ? ($row['salary_rate'] * 2) : $row['basic_salary'];
+                    
+                    // Other deductions combined
+                    $otherDed = $row['provident'] + $row['bcgeu'] + $row['nocgem'] + $row['bacgem'] + $row['other_deductions'];
+                    
+                    // Update totals
+                    $totals['basic_salary'] += $row['basic_salary'];
+                    $totals['pera'] += $row['pera'];
+                    $totals['gross_pay'] += $row['gross_pay'];
+                    $totals['wtax'] += $row['wtax'];
+                    $totals['gsis'] += $row['gsis'];
+                    $totals['philhealth'] += $row['philhealth'];
+                    $totals['pagibig'] += $row['pagibig'];
+                    $totals['total_deductions'] += $row['total_deductions'];
+                    $totals['net_pay'] += $row['net_pay'];
                 ?>
                     <tr>
                         <td><?php echo $rowNum++; ?></td>
@@ -447,10 +512,9 @@ $totals = [
                         <td class="position"><?php echo htmlspecialchars($row['position_title'] ?? 'N/A'); ?></td>
                         <td><?php echo $row['salary_grade'] ?? '-'; ?></td>
                         <td><?php echo $step; ?></td>
-                        <td style="font-size: 7pt;"><?php echo $row['period_type']; ?></td>
-                        <td class="currency"><?php echo number_format($basicSalary, 2); ?></td>
+                        <td class="currency"><?php echo number_format($row['basic_salary'], 2); ?></td>
                         <td class="currency"><?php echo number_format($row['pera'], 2); ?></td>
-                        <td class="currency"><?php echo number_format($grossPay, 2); ?></td>
+                        <td class="currency"><?php echo number_format($row['gross_pay'], 2); ?></td>
                         <td class="currency"><?php echo number_format($row['wtax'], 2); ?></td>
                         <td class="currency"><?php echo number_format($row['gsis'], 2); ?></td>
                         <td class="currency"><?php echo number_format($row['philhealth'], 2); ?></td>
@@ -460,14 +524,11 @@ $totals = [
                         <td class="currency" style="font-weight: bold;"><?php echo number_format($row['net_pay'], 2); ?></td>
                         <td></td>
                     </tr>
-                <?php 
-                    endwhile;
-                endif;
-                ?>
+                <?php endwhile; ?>
                 
                 <!-- Total Row -->
                 <tr class="total-row">
-                    <td colspan="6" style="text-align: right; font-weight: bold;">TOTAL:</td>
+                    <td colspan="5" style="text-align: right; font-weight: bold;">TOTAL:</td>
                     <td class="currency"><?php echo number_format($totals['basic_salary'], 2); ?></td>
                     <td class="currency"><?php echo number_format($totals['pera'], 2); ?></td>
                     <td class="currency"><?php echo number_format($totals['gross_pay'], 2); ?></td>
@@ -520,6 +581,16 @@ $totals = [
                 Printed on: <?php echo date('F d, Y h:i A'); ?>
             </p>
         </div>
+        
+        <?php else: ?>
+        <!-- No Paid Records Message -->
+        <div class="no-records">
+            <i>🔒</i>
+            <h3>No Paid Payroll Records Found</h3>
+            <p>There are no paid payroll records for <?php echo $month . ' ' . $year; ?> in this department.</p>
+            <p style="margin-top: 15px; font-size: 10pt;">Only payroll records with <strong>PAID</strong> status can be printed.</p>
+        </div>
+        <?php endif; ?>
     </div>
 </body>
 </html>
