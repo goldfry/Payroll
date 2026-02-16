@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Jan 27, 2026 at 02:18 AM
+-- Generation Time: Feb 16, 2026 at 01:45 AM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -41,7 +41,9 @@ CREATE TABLE `departments` (
 --
 
 INSERT INTO `departments` (`id`, `department_name`, `department_code`, `description`, `created_at`, `updated_at`) VALUES
-(136, 'City Mayor Office', 'CMO', 'MAYOR OFFICE', '2026-01-26 16:34:54', '2026-01-26 16:57:58');
+(136, 'City Mayor Office', 'CMO', 'MAYOR OFFICE', '2026-01-26 16:34:54', '2026-01-26 16:57:58'),
+(137, 'IT DEPT.', 'MITCS', '', '2026-01-28 05:48:48', '2026-01-28 05:48:48'),
+(139, 'Engineer Office', 'BENRO', '', '2026-02-04 14:43:20', '2026-02-04 14:43:36');
 
 -- --------------------------------------------------------
 
@@ -76,8 +78,38 @@ CREATE TABLE `employees` (
 --
 
 INSERT INTO `employees` (`id`, `employee_id`, `first_name`, `middle_name`, `last_name`, `suffix`, `sex`, `date_of_birth`, `age`, `email`, `phone`, `address`, `date_hired`, `department_id`, `position_id`, `employment_status`, `is_active`, `created_at`, `updated_at`) VALUES
-(37, 'EMP-2026-01', 'Greg', '', 'Gasataya', '', 'Male', '1980-09-28', 45, 'greggasataya@gmail.com', '9293528298', 'Bacolod City', '2015-10-18', 136, 42, 'Regular', 1, '2026-01-26 16:38:12', '2026-01-26 16:43:02'),
-(38, 'EMP-2026-02', 'Ernest', 'Albayda', 'Alcala', 'III', 'Male', '2002-09-12', 23, 'Edgy@gmail.com', '9293528298', 'Eroreco Bacolod City', '2020-10-27', 136, 43, 'Regular', 1, '2026-01-26 16:59:18', '2026-01-26 17:00:02');
+(38, 'EMP-2026-02', 'Ernest', 'Albayda', 'Alcala', 'III', 'Male', '2002-09-12', 23, 'Edgy@gmail.com', '9293528298', 'Eroreco Bacolod City', '2020-10-27', 136, 43, 'Regular', 1, '2026-01-26 16:59:18', '2026-01-26 17:00:02'),
+(39, 'EMP-05-2026', 'Chester', 'B.', 'Serfino', '', 'Male', '1998-08-12', 27, 'godfredbendicio@gmail.com', '09123456789', '', '2019-03-12', 137, 44, 'Regular', 1, '2026-01-28 05:50:54', '2026-01-28 05:52:43'),
+(41, '0004', 'Ramon', '', 'De Los Reyes', '', 'Male', '2006-06-20', 19, 'ramon@gmail.com', '09857483831', '', '2026-02-03', 136, 45, 'Regular', 1, '2026-02-03 06:59:26', '2026-02-03 07:02:53'),
+(44, '0900535', 'Godfred', 'Albayda', 'Bendicio', '', 'Female', '2002-09-12', 23, 'ernest123@gmail.com', '09124321153', '', '2024-02-12', 139, 46, 'Regular', 1, '2026-02-04 14:46:58', '2026-02-04 14:46:58');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `login_attempts`
+--
+
+CREATE TABLE `login_attempts` (
+  `id` int(11) NOT NULL,
+  `username` varchar(50) NOT NULL,
+  `ip_address` varchar(45) NOT NULL,
+  `attempt_time` timestamp NOT NULL DEFAULT current_timestamp(),
+  `success` tinyint(1) DEFAULT 0
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='Login attempt tracking for security';
+
+--
+-- Dumping data for table `login_attempts`
+--
+
+INSERT INTO `login_attempts` (`id`, `username`, `ip_address`, `attempt_time`, `success`) VALUES
+(1, 'admin', '::1', '2026-01-27 15:36:28', 0),
+(2, 'admin', '::1', '2026-01-27 15:36:37', 0),
+(3, 'admin', '::1', '2026-01-27 15:38:43', 0),
+(4, 'admin', '::1', '2026-01-27 15:47:28', 0),
+(5, 'admin', '::1', '2026-01-27 15:47:34', 0),
+(6, 'admin', '::1', '2026-01-27 15:49:10', 0),
+(7, 'administrator', '::1', '2026-01-27 15:49:20', 0),
+(8, 'admin', '::1', '2026-01-27 15:49:33', 0);
 
 -- --------------------------------------------------------
 
@@ -118,9 +150,14 @@ CREATE TABLE `payroll` (
 --
 
 INSERT INTO `payroll` (`id`, `employee_id`, `department_id`, `salary_id`, `payroll_period`, `payroll_month`, `payroll_year`, `period_type`, `basic_salary`, `pera`, `gross_pay`, `wtax`, `philhealth`, `gsis`, `pagibig`, `provident`, `bcgeu`, `nocgem`, `bacgem`, `other_deductions`, `total_deductions`, `net_pay`, `status`, `created_at`, `updated_at`) VALUES
-(17, 37, 136, 221, 'January 16-31, 2026', 'January', 2026, '16-31', 188916.00, 2000.00, 190916.00, 44475.30, 3600.00, 18280.08, 100.00, 0.00, 0.00, 0.00, 0.00, 0.00, 56164.24, 134751.76, 'Approved', '2026-01-26 16:50:12', '2026-01-26 16:51:39'),
-(18, 37, 136, 221, 'January 1-15, 2026', 'January', 2026, '1-15', 188916.00, 2000.00, 190916.00, 44475.30, 3600.00, 18280.08, 100.00, 0.00, 0.00, 0.00, 0.00, 0.00, 56164.24, 134751.76, 'Approved', '2026-01-26 16:50:23', '2026-01-26 16:51:35'),
-(19, 38, 136, 258, 'January 1-15, 2026', 'January', 2026, '1-15', 13000.00, 2000.00, 15000.00, 0.00, 599.63, 1199.25, 100.00, 0.00, 0.00, 0.00, 0.00, 0.00, 1695.00, 13305.00, '', '2026-01-26 17:00:32', '2026-01-26 17:00:32');
+(32, 38, 136, 258, 'January 1-15, 2026', 'January', 2026, '1-15', 13000.00, 2000.00, 15000.00, 0.00, 599.63, 1199.25, 100.00, 0.00, 0.00, 0.00, 0.00, 0.00, 1695.00, 13305.00, 'Paid', '2026-02-04 14:52:20', '2026-02-06 08:21:22'),
+(33, 44, 139, 34, 'January 1-15, 2026', 'January', 2026, '1-15', 20000.00, 2000.00, 22000.00, 0.00, 900.00, 1800.00, 100.00, 0.00, 0.00, 0.00, 0.00, 0.00, 2500.00, 19500.00, 'Paid', '2026-02-04 14:53:01', '2026-02-13 03:58:35'),
+(34, 39, 137, 92, 'January 1-15, 2026', 'January', 2026, '1-15', 35299.00, 2000.00, 37299.00, 2622.80, 1668.24, 3336.48, 100.00, 0.00, 0.00, 0.00, 0.00, 0.00, 6090.38, 31208.62, 'Paid', '2026-02-04 14:53:47', '2026-02-13 04:13:37'),
+(35, 41, 136, 257, 'January 1-15, 2026', 'January', 2026, '1-15', 13325.00, 2000.00, 15325.00, 0.00, 585.00, 1170.00, 100.00, 0.00, 0.00, 0.00, 0.00, 0.00, 1732.38, 13592.63, 'Paid', '2026-02-04 14:54:48', '2026-02-06 08:21:22'),
+(36, 38, 136, 258, 'February 1-15, 2026', 'February', 2026, '1-15', 13325.00, 2000.00, 15325.00, 0.00, 333.13, 1199.25, 200.00, 0.00, 0.00, 0.00, 0.00, 0.00, 1732.38, 13592.63, 'Paid', '2026-02-06 10:09:14', '2026-02-13 04:03:24'),
+(37, 41, 136, 257, 'February 1-15, 2026', 'February', 2026, '1-15', 13000.00, 2000.00, 15000.00, 0.00, 325.00, 1170.00, 200.00, 0.00, 0.00, 0.00, 0.00, 0.00, 1695.00, 13305.00, 'Paid', '2026-02-06 10:09:14', '2026-02-13 04:03:24'),
+(38, 38, 136, 258, 'September 1-15, 2026', 'September', 2026, '1-15', 13325.00, 2000.00, 15325.00, 0.00, 333.13, 1199.25, 200.00, 0.00, 0.00, 0.00, 0.00, 0.00, 1732.38, 13592.63, 'Paid', '2026-02-06 10:10:01', '2026-02-13 03:55:21'),
+(39, 41, 136, 257, 'September 1-15, 2026', 'September', 2026, '1-15', 13000.00, 2000.00, 15000.00, 0.00, 325.00, 1170.00, 200.00, 0.00, 0.00, 0.00, 0.00, 0.00, 1695.00, 13305.00, 'Paid', '2026-02-06 10:10:01', '2026-02-13 03:55:21');
 
 -- --------------------------------------------------------
 
@@ -145,8 +182,10 @@ CREATE TABLE `positions` (
 --
 
 INSERT INTO `positions` (`id`, `salary_id`, `position_title`, `salary_grade`, `salary_step`, `basic_salary`, `department_id`, `created_at`, `updated_at`) VALUES
-(42, 218, 'City Mayor', 30, 1, 188916.00, 136, '2026-01-26 16:35:44', '2026-01-26 16:35:44'),
-(43, 257, 'Laborer I', 1, 1, 13000.00, 136, '2026-01-26 16:59:43', '2026-01-26 16:59:43');
+(43, 257, 'Laborer I', 1, 1, 13000.00, 136, '2026-01-26 16:59:43', '2026-01-26 16:59:43'),
+(44, 90, 'Accountant II', 14, 1, 35299.00, 137, '2026-01-28 05:52:28', '2026-01-28 05:52:28'),
+(45, 258, 'Administrative Aide III', 1, 2, 13325.00, 136, '2026-02-03 07:02:01', '2026-02-03 07:02:01'),
+(46, 34, 'Clerk III', 7, 1, 20000.00, 139, '2026-02-04 14:45:45', '2026-02-04 14:45:45');
 
 -- --------------------------------------------------------
 
@@ -458,6 +497,85 @@ CREATE TABLE `step_inc_history` (
 INSERT INTO `step_inc_history` (`id`, `employee_id`, `step_inc`, `salary_id`, `position_id`, `is_active`, `created_at`, `updated_at`) VALUES
 (4, 32, 2, 4, 40, 'Y', '2026-01-26 01:38:39', '2026-01-26 01:38:39');
 
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `users`
+--
+
+CREATE TABLE `users` (
+  `id` int(11) NOT NULL,
+  `username` varchar(50) NOT NULL,
+  `password` varchar(255) NOT NULL,
+  `full_name` varchar(100) NOT NULL,
+  `email` varchar(100) DEFAULT NULL,
+  `role` enum('admin','staff','viewer') DEFAULT 'staff',
+  `status` enum('active','inactive') DEFAULT 'active',
+  `last_login` datetime DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='User accounts and authentication';
+
+--
+-- Dumping data for table `users`
+--
+
+INSERT INTO `users` (`id`, `username`, `password`, `full_name`, `email`, `role`, `status`, `last_login`, `created_at`, `updated_at`) VALUES
+(1, 'admin', '$2y$10$svN5jkYZOARhTZ.Qqwvys.DyrfLKHOKzy.jy/.pcXe3xTkjjvhBqu', 'Administrator', 'admin@example.com', 'admin', 'active', '2026-02-13 11:52:03', '2026-01-27 15:34:42', '2026-02-13 03:52:03'),
+(4, 'staff1', '$2y$10$Rm3kEfTSXrXHdU7eyflEKOoS3o2U/wv4oagUF/kphMxl7DaNn4mAK', '', NULL, 'staff', 'active', '2026-01-28 00:22:22', '2026-01-27 16:17:44', '2026-01-27 16:22:22'),
+(5, 'mayor1', '$2y$10$qF0Q1waSMv6asJBMKtQIWO8xdK0tmpFxS3ueT58.q7m3ON.SeRzAS', '', NULL, 'staff', 'active', '2026-01-28 00:31:39', '2026-01-27 16:31:21', '2026-01-27 16:31:39'),
+(6, 'IT', '$2y$10$3iyZIf9ejsSfg.Lfw6UWa.zGCksZyGRJA1r0tcVCyYMztHR5i5FrG', '', NULL, 'admin', 'active', '2026-01-28 00:39:14', '2026-01-27 16:39:03', '2026-01-27 16:39:14');
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `user_sessions`
+--
+
+CREATE TABLE `user_sessions` (
+  `id` int(11) NOT NULL,
+  `user_id` int(11) NOT NULL,
+  `session_token` varchar(255) NOT NULL,
+  `ip_address` varchar(45) NOT NULL,
+  `user_agent` text DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `expires_at` datetime NOT NULL,
+  `is_active` tinyint(1) DEFAULT 1
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='Active user sessions';
+
+--
+-- Dumping data for table `user_sessions`
+--
+
+INSERT INTO `user_sessions` (`id`, `user_id`, `session_token`, `ip_address`, `user_agent`, `created_at`, `expires_at`, `is_active`) VALUES
+(1, 1, '69f89f4f5ee264059357db799f5f72196236006fc62b61f1358a611f238eca76', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-01-27 16:05:21', '2026-01-28 17:05:21', 0),
+(2, 1, 'e841bebc0df746124e3fabd00e2e82eedd03abfb4f722dd53d1cd8809c8e0687', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-01-27 16:05:30', '2026-01-28 17:05:30', 0),
+(3, 1, 'fbc135ef21bb189053369bfc0ba18141428695837044926a061c3061250f02a1', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-01-27 16:07:02', '2026-01-28 17:07:02', 0),
+(4, 1, 'b7874948bb77a55481ad7a13829e8b93ac9cbb114b8ae30aa1b2bc06a42b56ec', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-01-27 16:07:50', '2026-01-28 17:07:50', 1),
+(5, 1, '6ce002b8038feae79ef65b8a1cd262dbcd70599ab51d1cd8fe575bb4e39b73cf', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-01-27 16:19:01', '2026-01-28 17:19:01', 0),
+(6, 4, '9f176ee7ec01f97a1a0f138d05f55780bdcbf854dce355438c5231f1ab46ef8d', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-01-27 16:22:22', '2026-01-28 17:22:22', 0),
+(7, 5, '36cc62a297a2d2b51b8b6002fc58c6bb16389a8cea7971f0be8f5cc5f6119258', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-01-27 16:31:39', '2026-01-28 17:31:39', 0),
+(8, 6, 'afc1489c050606d87503790496cd893a41d8b6178f71cf1816930f814bc1bb03', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-01-27 16:39:14', '2026-01-28 17:39:14', 0),
+(9, 1, '4694172dccd30f2e443d90109c871fb2b898b2c5103ab7afc1e438ac2ee61abb', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-01-28 00:48:55', '2026-01-29 01:48:55', 1),
+(10, 1, 'c766664354d80e65c56990327883d7b6fe217adb6b89185540cf4ec7dd866496', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-01-28 03:10:39', '2026-01-29 04:10:39', 0),
+(11, 1, '1c2a7ab054ece0d1238548d9ba5ed7c19d95a3091597f1e96e1cacd7bbe79957', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-01-28 03:11:49', '2026-01-29 04:11:49', 0),
+(12, 1, 'fc92a9ddbce7341639653bdd4403dbff9427f81929a560a8ab5d3edb575a153c', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-01-28 03:12:10', '2026-01-29 04:12:10', 0),
+(13, 1, '204a98da1806abda425e6dba494acfbec8b6313174be69978d4938cb65c1c54c', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-01-28 03:12:16', '2026-01-29 04:12:16', 0),
+(14, 1, '497c6590823d9e54fd793c3bc396f4f3a768d2af51c616d64ec59986bea6ddda', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-01-28 05:29:10', '2026-01-29 06:29:10', 0),
+(15, 1, '1d665820d980063b45577c761bb04c89bc19390bd700ba38f719955a32d91a1d', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-01-28 05:40:32', '2026-01-29 06:40:32', 0),
+(16, 1, '6584a891c36a61a09d8e51ab5f160c2a374e93d803bec4622058e8ad185c6818', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-01-28 05:41:58', '2026-01-29 06:41:58', 0),
+(17, 1, '9aeab0e71e906e3e2f2cb7fa4aac389762d1d80e2d5c93b8da85bbb0d83ef10a', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-01-28 05:42:24', '2026-01-29 06:42:24', 0),
+(18, 1, '28c5544339a8da97a8c8adc9f2348030fbff94520a9b079ae7d681869c90094d', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-01-28 06:17:22', '2026-01-29 07:17:22', 0),
+(19, 1, 'a75f88ff7cd65ccef0dc1af4d9c36f283d33b98be2f47e70f4d233f2e2958ad7', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-01-28 06:18:02', '2026-01-29 07:18:02', 0),
+(20, 1, '98605d539bef62f359c76573d69f158cdbf74b9aadc94a6eed9c07d8be690c27', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-01-28 06:52:41', '2026-01-29 07:52:41', 0),
+(21, 1, 'e532633e5feb2386ba124913a1d3ca5b22c684c14e854ccb5f06490d507f24a7', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-01-28 07:07:49', '2026-01-29 08:07:49', 0),
+(22, 1, 'c2af6b0d9c9cf2daa038b0b757562a9d641abd1a067f47cc35ce93f283abc39f', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-01-28 07:08:35', '2026-01-29 08:08:35', 1),
+(23, 1, '7532448fe64315421cdf9cc6af4179ae83338a76c1bfd0216b2421c1f68fca64', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-03 06:49:34', '2026-02-04 07:49:34', 1),
+(24, 1, '37f84530fb0c07115feb90acc5641b8658a8682635f705242b236d5b8defb8ef', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-04 14:06:07', '2026-02-05 15:06:07', 1),
+(25, 1, '39c77cf984c6f6f307e5ef1a1563c5f2199abd1ca79d9eb935a28a9a33864f00', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-06 08:20:18', '2026-02-07 09:20:18', 0),
+(26, 1, 'edb3328edf21973151cd805471ddcf60774030fa80e7ee68404414b1dd5462a0', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-06 10:02:39', '2026-02-07 11:02:39', 1),
+(27, 1, '47120874b1e3b1ea4d096b2f901554dc4563bceb7d30f5d11c3f61f26475c2c5', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-13 03:52:03', '2026-03-15 04:52:03', 1);
+
 --
 -- Indexes for dumped tables
 --
@@ -480,6 +598,15 @@ ALTER TABLE `employees`
   ADD KEY `idx_employees_active` (`is_active`),
   ADD KEY `idx_sex` (`sex`),
   ADD KEY `idx_date_of_birth` (`date_of_birth`);
+
+--
+-- Indexes for table `login_attempts`
+--
+ALTER TABLE `login_attempts`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_username` (`username`),
+  ADD KEY `idx_ip` (`ip_address`),
+  ADD KEY `idx_time` (`attempt_time`);
 
 --
 -- Indexes for table `payroll`
@@ -518,6 +645,24 @@ ALTER TABLE `step_inc_history`
   ADD KEY `idx_step_inc_created` (`created_at`);
 
 --
+-- Indexes for table `users`
+--
+ALTER TABLE `users`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `username` (`username`),
+  ADD KEY `idx_username` (`username`),
+  ADD KEY `idx_status` (`status`);
+
+--
+-- Indexes for table `user_sessions`
+--
+ALTER TABLE `user_sessions`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `idx_token` (`session_token`),
+  ADD KEY `idx_user` (`user_id`),
+  ADD KEY `idx_active` (`is_active`);
+
+--
 -- AUTO_INCREMENT for dumped tables
 --
 
@@ -525,25 +670,31 @@ ALTER TABLE `step_inc_history`
 -- AUTO_INCREMENT for table `departments`
 --
 ALTER TABLE `departments`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=137;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=140;
 
 --
 -- AUTO_INCREMENT for table `employees`
 --
 ALTER TABLE `employees`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=39;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=45;
+
+--
+-- AUTO_INCREMENT for table `login_attempts`
+--
+ALTER TABLE `login_attempts`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
 
 --
 -- AUTO_INCREMENT for table `payroll`
 --
 ALTER TABLE `payroll`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=20;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=40;
 
 --
 -- AUTO_INCREMENT for table `positions`
 --
 ALTER TABLE `positions`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=44;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=47;
 
 --
 -- AUTO_INCREMENT for table `salary`
@@ -556,6 +707,18 @@ ALTER TABLE `salary`
 --
 ALTER TABLE `step_inc_history`
   MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
+
+--
+-- AUTO_INCREMENT for table `users`
+--
+ALTER TABLE `users`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
+
+--
+-- AUTO_INCREMENT for table `user_sessions`
+--
+ALTER TABLE `user_sessions`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=28;
 
 --
 -- Constraints for dumped tables
@@ -575,6 +738,12 @@ ALTER TABLE `payroll`
   ADD CONSTRAINT `payroll_ibfk_1` FOREIGN KEY (`employee_id`) REFERENCES `employees` (`id`),
   ADD CONSTRAINT `payroll_ibfk_2` FOREIGN KEY (`department_id`) REFERENCES `departments` (`id`),
   ADD CONSTRAINT `payroll_ibfk_3` FOREIGN KEY (`salary_id`) REFERENCES `salary` (`salary_id`);
+
+--
+-- Constraints for table `user_sessions`
+--
+ALTER TABLE `user_sessions`
+  ADD CONSTRAINT `user_sessions_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE;
 COMMIT;
 
 /*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
