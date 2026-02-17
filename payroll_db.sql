@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: 127.0.0.1
--- Generation Time: Feb 16, 2026 at 06:29 AM
+-- Generation Time: Feb 17, 2026 at 01:06 PM
 -- Server version: 10.4.32-MariaDB
 -- PHP Version: 8.2.12
 
@@ -179,7 +179,9 @@ INSERT INTO `payroll` (`id`, `employee_id`, `department_id`, `salary_id`, `payro
 (76, 38, 136, 258, 'August 1-31, 2026', 'August', 2026, '', 13325.00, 2000.00, 15325.00, 0.00, 333.13, 1199.25, 200.00, 0.00, 0.00, 0.00, 0.00, 0.00, 1732.38, 13592.63, 'Paid', '2026-02-16 05:23:58', '2026-02-16 05:24:55'),
 (77, 41, 136, 257, 'August 1-31, 2026', 'August', 2026, '', 13000.00, 2000.00, 15000.00, 0.00, 325.00, 1170.00, 200.00, 0.00, 0.00, 0.00, 0.00, 0.00, 1695.00, 13305.00, 'Paid', '2026-02-16 05:23:58', '2026-02-16 05:24:55'),
 (78, 44, 139, 34, 'August 1-31, 2026', 'August', 2026, '', 20000.00, 2000.00, 22000.00, 0.00, 500.00, 1800.00, 200.00, 0.00, 0.00, 0.00, 0.00, 0.00, 2500.00, 19500.00, 'Paid', '2026-02-16 05:23:58', '2026-02-16 05:26:29'),
-(79, 39, 137, 92, 'August 1-31, 2026', 'August', 2026, '', 37072.00, 2000.00, 39072.00, 2622.80, 926.80, 3336.48, 200.00, 0.00, 0.00, 0.00, 0.00, 0.00, 7086.08, 31985.92, 'Paid', '2026-02-16 05:23:58', '2026-02-16 05:27:08');
+(79, 39, 137, 92, 'August 1-31, 2026', 'August', 2026, '', 37072.00, 2000.00, 39072.00, 2622.80, 926.80, 3336.48, 200.00, 0.00, 0.00, 0.00, 0.00, 0.00, 7086.08, 31985.92, 'Paid', '2026-02-16 05:23:58', '2026-02-16 05:27:08'),
+(80, 38, 136, 258, 'April 1-30, 2026', 'April', 2026, '', 13325.00, 2000.00, 15325.00, 0.00, 333.13, 1199.25, 200.00, 0.00, 0.00, 0.00, 0.00, 0.00, 1732.38, 13592.63, 'Paid', '2026-02-17 11:20:55', '2026-02-17 11:40:00'),
+(81, 41, 136, 257, 'April 1-30, 2026', 'April', 2026, '', 13000.00, 2000.00, 15000.00, 0.00, 325.00, 1170.00, 200.00, 0.00, 0.00, 0.00, 0.00, 0.00, 1695.00, 13305.00, 'Paid', '2026-02-17 11:20:55', '2026-02-17 11:40:00');
 
 -- --------------------------------------------------------
 
@@ -532,7 +534,7 @@ CREATE TABLE `users` (
   `password` varchar(255) NOT NULL,
   `full_name` varchar(100) NOT NULL,
   `email` varchar(100) DEFAULT NULL,
-  `role` enum('admin','staff','viewer') DEFAULT 'staff',
+  `role` varchar(20) DEFAULT 'superadmin',
   `status` enum('active','inactive') DEFAULT 'active',
   `last_login` datetime DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
@@ -544,10 +546,9 @@ CREATE TABLE `users` (
 --
 
 INSERT INTO `users` (`id`, `username`, `password`, `full_name`, `email`, `role`, `status`, `last_login`, `created_at`, `updated_at`) VALUES
-(1, 'admin', '$2y$10$svN5jkYZOARhTZ.Qqwvys.DyrfLKHOKzy.jy/.pcXe3xTkjjvhBqu', 'Administrator', 'admin@example.com', 'admin', 'active', '2026-02-16 12:50:00', '2026-01-27 15:34:42', '2026-02-16 04:50:00'),
-(4, 'staff1', '$2y$10$Rm3kEfTSXrXHdU7eyflEKOoS3o2U/wv4oagUF/kphMxl7DaNn4mAK', '', NULL, 'staff', 'active', '2026-01-28 00:22:22', '2026-01-27 16:17:44', '2026-01-27 16:22:22'),
-(5, 'mayor1', '$2y$10$qF0Q1waSMv6asJBMKtQIWO8xdK0tmpFxS3ueT58.q7m3ON.SeRzAS', '', NULL, 'staff', 'active', '2026-01-28 00:31:39', '2026-01-27 16:31:21', '2026-01-27 16:31:39'),
-(6, 'IT', '$2y$10$3iyZIf9ejsSfg.Lfw6UWa.zGCksZyGRJA1r0tcVCyYMztHR5i5FrG', '', NULL, 'admin', 'active', '2026-01-28 00:39:14', '2026-01-27 16:39:03', '2026-01-27 16:39:14');
+(1, 'admin', '$2y$10$svN5jkYZOARhTZ.Qqwvys.DyrfLKHOKzy.jy/.pcXe3xTkjjvhBqu', 'Administrator', 'admin@example.com', 'superadmin', 'active', '2026-02-17 19:23:51', '2026-01-27 15:34:42', '2026-02-17 11:23:51'),
+(7, 'admin2', '$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', 'Payroll Officer', 'payroll@payroll.gov', 'admin2', 'active', NULL, '2026-02-17 11:02:31', '2026-02-17 11:02:31'),
+(8, 'admin3', '$2y$10$mAsxpzIWu8pdG.QtGG7yQu60AvJ4rPgz.ADixDta/t.hXVKDsIrSG', 'Godfred', 'godfredbendicio@gmail.com', 'admin2', 'active', '2026-02-17 19:44:14', '2026-02-17 11:12:38', '2026-02-17 11:44:14');
 
 -- --------------------------------------------------------
 
@@ -576,9 +577,6 @@ INSERT INTO `user_sessions` (`id`, `user_id`, `session_token`, `ip_address`, `us
 (3, 1, 'fbc135ef21bb189053369bfc0ba18141428695837044926a061c3061250f02a1', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-01-27 16:07:02', '2026-01-28 17:07:02', 0),
 (4, 1, 'b7874948bb77a55481ad7a13829e8b93ac9cbb114b8ae30aa1b2bc06a42b56ec', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-01-27 16:07:50', '2026-01-28 17:07:50', 1),
 (5, 1, '6ce002b8038feae79ef65b8a1cd262dbcd70599ab51d1cd8fe575bb4e39b73cf', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-01-27 16:19:01', '2026-01-28 17:19:01', 0),
-(6, 4, '9f176ee7ec01f97a1a0f138d05f55780bdcbf854dce355438c5231f1ab46ef8d', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-01-27 16:22:22', '2026-01-28 17:22:22', 0),
-(7, 5, '36cc62a297a2d2b51b8b6002fc58c6bb16389a8cea7971f0be8f5cc5f6119258', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-01-27 16:31:39', '2026-01-28 17:31:39', 0),
-(8, 6, 'afc1489c050606d87503790496cd893a41d8b6178f71cf1816930f814bc1bb03', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-01-27 16:39:14', '2026-01-28 17:39:14', 0),
 (9, 1, '4694172dccd30f2e443d90109c871fb2b898b2c5103ab7afc1e438ac2ee61abb', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-01-28 00:48:55', '2026-01-29 01:48:55', 1),
 (10, 1, 'c766664354d80e65c56990327883d7b6fe217adb6b89185540cf4ec7dd866496', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-01-28 03:10:39', '2026-01-29 04:10:39', 0),
 (11, 1, '1c2a7ab054ece0d1238548d9ba5ed7c19d95a3091597f1e96e1cacd7bbe79957', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-01-28 03:11:49', '2026-01-29 04:11:49', 0),
@@ -597,7 +595,20 @@ INSERT INTO `user_sessions` (`id`, `user_id`, `session_token`, `ip_address`, `us
 (24, 1, '37f84530fb0c07115feb90acc5641b8658a8682635f705242b236d5b8defb8ef', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-04 14:06:07', '2026-02-05 15:06:07', 1),
 (25, 1, '39c77cf984c6f6f307e5ef1a1563c5f2199abd1ca79d9eb935a28a9a33864f00', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-06 08:20:18', '2026-02-07 09:20:18', 0),
 (26, 1, 'edb3328edf21973151cd805471ddcf60774030fa80e7ee68404414b1dd5462a0', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36', '2026-02-06 10:02:39', '2026-02-07 11:02:39', 1),
-(27, 1, '42fb8586c39e8626e4740bfc52bb0c03c0aa3834c42686372165449e69592de9', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-02-16 04:50:00', '2026-02-17 05:50:00', 1);
+(27, 1, '42fb8586c39e8626e4740bfc52bb0c03c0aa3834c42686372165449e69592de9', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-02-16 04:50:00', '2026-02-17 05:50:00', 1),
+(28, 1, 'c88525ba6b5912af3d65b39675eae20886a624b0699cb4d1da5c6d7669ac9726', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-02-17 10:54:38', '2026-02-18 11:54:38', 0),
+(29, 1, '509500b10ae097b71543c3725e792478ff73e727d3f0b5f995f2731a17d81f0e', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-02-17 11:04:52', '2026-02-18 12:04:52', 0),
+(30, 1, '037e203314a1877bd7129dc560e057e7304ea09f84c48a9b8f615837032982ba', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-02-17 11:11:43', '2026-02-18 12:11:43', 0),
+(31, 8, '9cf0541dba3667ba37fc7a807070ee4f86dd84f61107692c9a918a9d0d4e562c', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-02-17 11:12:48', '2026-02-18 12:12:48', 0),
+(32, 1, 'c2b9ddaf868f7088077089bd1b4427e1eac48606efc4191df49a6a12e2f937b2', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-02-17 11:13:45', '2026-02-18 12:13:45', 0),
+(33, 8, 'a5111f1c91d274c9f31ba8d31d587399c03b0a765f490b71abef4b98b3951570', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-02-17 11:14:27', '2026-02-18 12:14:27', 0),
+(34, 1, '931184acce254962d4a74253216c07dc1114d00117abd1f8a8bae9d9909a22a0', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-02-17 11:15:23', '2026-02-18 12:15:23', 0),
+(35, 8, '5fbbb26b3ccabf5e2479864d8ab457330f744aa6de54c1ee8002c9bb1d1653cb', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-02-17 11:15:34', '2026-02-18 12:15:34', 0),
+(36, 1, '7666eb27e0a2b3d023a9974414a01d2d24a501c2cdef0da32382dc027b456cfc', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-02-17 11:16:06', '2026-02-18 12:16:06', 0),
+(37, 8, '9ca5e8d97cb6657cf73401f2f0fa5b1e2c6ae8f917818f3aad013c797fd8c4b1', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-02-17 11:21:54', '2026-02-18 12:21:54', 0),
+(38, 1, '387b45f53f406cd4fb906905b23038022651d329987d6207f80b707e5e4d2fdb', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-02-17 11:23:51', '2026-02-18 12:23:51', 0),
+(39, 8, 'f74549a2aba0dc8242c2da321cbf8a8728ad3b04a0e5cc52b4f8fc3e1062d210', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-02-17 11:39:29', '2026-02-18 12:39:29', 0),
+(40, 8, '20cfe1227e0ba4851b6cd885852b392eacf17ba8d8bce77b48b80dfedda16aae', '::1', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36', '2026-02-17 11:44:14', '2026-02-18 12:44:14', 0);
 
 --
 -- Indexes for dumped tables
@@ -711,7 +722,7 @@ ALTER TABLE `login_attempts`
 -- AUTO_INCREMENT for table `payroll`
 --
 ALTER TABLE `payroll`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=80;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=82;
 
 --
 -- AUTO_INCREMENT for table `positions`
@@ -735,13 +746,13 @@ ALTER TABLE `step_inc_history`
 -- AUTO_INCREMENT for table `users`
 --
 ALTER TABLE `users`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=7;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=9;
 
 --
 -- AUTO_INCREMENT for table `user_sessions`
 --
 ALTER TABLE `user_sessions`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=28;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=41;
 
 --
 -- Constraints for dumped tables

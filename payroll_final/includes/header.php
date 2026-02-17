@@ -36,6 +36,7 @@
                     </a>
                 </div>
                 
+                <?php if (!function_exists('isAdmin2') || !isAdmin2()): ?>
                 <div class="nav-section">
                     <span class="nav-section-title">Management</span>
                     <a href="departments.php" class="nav-item">
@@ -55,6 +56,7 @@
                         <span>Salary</span>
                     </a>
                 </div>
+                <?php endif; ?>
                 
                 <div class="nav-section">
                     <span class="nav-section-title">Payroll</span>
@@ -62,6 +64,7 @@
                         <i class="fas fa-money-check-dollar"></i>
                         <span>Payroll List</span>
                     </a>
+                    <?php if (!function_exists('isAdmin2') || !isAdmin2()): ?>
                     <a href="payroll_create.php" class="nav-item">
                         <i class="fas fa-file-invoice-dollar"></i>
                         <span>Create Payroll</span>
@@ -70,8 +73,10 @@
                         <i class="fas fa-calculator"></i>
                         <span>Generate Payroll</span>
                     </a>
+                    <?php endif; ?>
                 </div>
                 
+                <?php if (!function_exists('isAdmin2') || !isAdmin2()): ?>
                 <div class="nav-section">
                     <span class="nav-section-title">Reports</span>
                     <a href="reports.php" class="nav-item">
@@ -79,6 +84,14 @@
                         <span>Reports</span>
                     </a>
                 </div>
+                <div class="nav-section">
+                    <span class="nav-section-title">System</span>
+                    <a href="register.php" class="nav-item">
+                        <i class="fas fa-user-plus"></i>
+                        <span>Register User</span>
+                    </a>
+                </div>
+                <?php endif; ?>
             </nav>
             
             <div style="padding: 1rem; border-top: 1px solid rgba(255,255,255,0.1);">

@@ -21,7 +21,40 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['bulk_status_change'])
     $filterYear = isset($_POST['filter_year']) ? (int)$_POST['filter_year'] : 0;
     
     $allowedStatuses = ['Draft', 'Approved', 'Paid'];
+    if (isAdmin2()) {
+        // admin2 can only mark as Paid
+        $allowedStatuses = ['Paid'];
+    }
     if (in_array($newStatus, $allowedStatuses) && $deptId > 0) {
+
+        // If trying to mark as Paid, ensure ALL non-paid records are Approved first
+        if ($newStatus === 'Paid') {
+            $checkWhereClause = "department_id = ? AND status NOT IN ('Paid', 'Approved')";
+            $checkParams = [$deptId];
+            $checkTypes = "i";
+            if ($filterMonth && $filterYear) {
+                $checkWhereClause .= " AND payroll_month = ? AND payroll_year = ?";
+                $checkParams[] = $filterMonth;
+                $checkParams[] = $filterYear;
+                $checkTypes .= "si";
+            }
+            $checkStmt = $conn->prepare("SELECT COUNT(*) as cnt FROM payroll WHERE $checkWhereClause");
+            $checkStmt->bind_param($checkTypes, ...$checkParams);
+            $checkStmt->execute();
+            $notApproved = $checkStmt->get_result()->fetch_assoc()['cnt'];
+            $checkStmt->close();
+
+            if ($notApproved > 0) {
+                $_SESSION['error_message'] = "Cannot mark as Paid. $notApproved record(s) are still in Draft status. All records must be Approved first.";
+                $redirectUrl = 'payroll.php?department_id=' . $deptId;
+                if ($filterMonth && $filterYear) {
+                    $redirectUrl .= '&month=' . urlencode($filterMonth) . '&year=' . $filterYear;
+                }
+                header('Location: ' . $redirectUrl);
+                exit;
+            }
+        }
+
         // Build WHERE clause
         $whereClause = "department_id = ? AND status != 'Paid'";
         $params = [$deptId];
@@ -60,6 +93,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['bulk_status_change'])
 
 // Handle delete request
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_payroll_id'])) {
+    if (isAdmin2()) {
+        $_SESSION['error_message'] = 'Access denied. You do not have permission to delete payroll records.';
+        header('Location: payroll.php');
+        exit;
+    }
     $deleteId = (int)$_POST['delete_payroll_id'];
     
     $checkStmt = $conn->prepare("SELECT status FROM payroll WHERE id = ?");
@@ -121,17 +159,26 @@ $payrollRecords = null;
 $totalRecords = 0;
 $paidCount = 0;
 $nonPaidCount = 0;
+$draftCount = 0;
 $allPaid = false;
+$canMarkPaid = false;
 $currentMonth = null;
 $currentYear = null;
 $availablePeriods = [];
 
 if ($selectedDeptId > 0) {
-    // Get available months/years for this department (combine all periods)
+    // Get available months/years with counts per month for tab badges
     $periodsQuery = $conn->query("
-        SELECT DISTINCT payroll_month, payroll_year
+        SELECT 
+            payroll_month, 
+            payroll_year,
+            COUNT(*) as total,
+            SUM(CASE WHEN status = 'Draft' THEN 1 ELSE 0 END) as draft_count,
+            SUM(CASE WHEN status = 'Approved' THEN 1 ELSE 0 END) as approved_count,
+            SUM(CASE WHEN status = 'Paid' THEN 1 ELSE 0 END) as paid_count
         FROM payroll 
         WHERE department_id = $selectedDeptId 
+        GROUP BY payroll_month, payroll_year
         ORDER BY payroll_year DESC, 
                  FIELD(payroll_month, 'December','November','October','September','August','July','June','May','April','March','February','January')
     ");
@@ -139,16 +186,16 @@ if ($selectedDeptId > 0) {
         $availablePeriods[] = $p;
     }
     
-    // Set current filter from URL or use latest
-    if (isset($_GET['month']) && isset($_GET['year'])) {
+    // Set current filter from URL — empty means show ALL months
+    if (isset($_GET['month']) && isset($_GET['year']) && $_GET['month'] !== 'all') {
         $currentMonth = sanitize($_GET['month']);
         $currentYear = (int)$_GET['year'];
-    } elseif (!empty($availablePeriods)) {
-        $currentMonth = $availablePeriods[0]['payroll_month'];
-        $currentYear = $availablePeriods[0]['payroll_year'];
+    } else {
+        $currentMonth = null;
+        $currentYear = null;
     }
     
-    // Build WHERE clause - filter by month and year only (all periods)
+    // Build WHERE clause - no month filter = show all records
     $whereClause = "p.department_id = $selectedDeptId";
     if ($currentMonth && $currentYear) {
         $whereClause .= " AND p.payroll_month = '$currentMonth' AND p.payroll_year = $currentYear";
@@ -158,14 +205,19 @@ if ($selectedDeptId > 0) {
         SELECT 
             COUNT(*) as total,
             SUM(CASE WHEN status = 'Paid' THEN 1 ELSE 0 END) as paid,
-            SUM(CASE WHEN status != 'Paid' THEN 1 ELSE 0 END) as non_paid
+            SUM(CASE WHEN status != 'Paid' THEN 1 ELSE 0 END) as non_paid,
+            SUM(CASE WHEN status = 'Draft' THEN 1 ELSE 0 END) as draft_count,
+            SUM(CASE WHEN status = 'Approved' THEN 1 ELSE 0 END) as approved_count
         FROM payroll p WHERE $whereClause
     ");
     $counts = $countQuery->fetch_assoc();
     $totalRecords = $counts['total'];
     $paidCount = $counts['paid'];
     $nonPaidCount = $counts['non_paid'];
+    $draftCount = $counts['draft_count'];
     $allPaid = ($totalRecords > 0 && $paidCount == $totalRecords);
+    // Can only mark Paid if there are non-paid records AND none are still in Draft
+    $canMarkPaid = ($nonPaidCount > 0 && $draftCount == 0);
     
     $query = "
         SELECT 
@@ -402,208 +454,374 @@ require_once 'includes/header.php';
     border-radius: 16px;
     padding: 1.5rem;
     margin-bottom: 1.5rem;
-    box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+    box-shadow: 0 4px 6px -1px rgba(0,0,0,0.08);
+    border: 1px solid #f0f0f0;
 }
 
 .bulk-status-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-bottom: 1rem;
+    margin-bottom: 1.25rem;
+    flex-wrap: wrap;
+    gap: 0.5rem;
 }
 
 .bulk-status-header h3 {
-    font-size: 1.125rem;
+    font-size: 1rem;
     font-weight: 700;
     color: #111827;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
 }
 
 .bulk-status-header h3 i {
     color: #2d6394;
-    margin-right: 8px;
 }
 
 .record-count {
     background: #f3f4f6;
-    padding: 4px 12px;
+    padding: 4px 14px;
     border-radius: 20px;
-    font-size: 0.875rem;
+    font-size: 0.8rem;
     font-weight: 600;
     color: #4b5563;
 }
 
-.bulk-status-buttons {
+/* Workflow steps layout */
+.workflow-steps {
     display: flex;
-    gap: 1rem;
-    flex-wrap: wrap;
+    align-items: stretch;
+    gap: 0;
+    background: #f8fafc;
+    border-radius: 14px;
+    padding: 0.5rem;
+    border: 1px solid #e5e7eb;
 }
 
-.bulk-status-btn {
-    display: inline-flex;
+.workflow-step {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 8px;
-    padding: 16px 32px;
-    border-radius: 12px;
-    font-weight: 700;
-    font-size: 1.1rem;
+    gap: 0.4rem;
+    padding: 1rem 0.5rem;
+    border-radius: 10px;
+    border: none;
+    background: transparent;
     cursor: pointer;
+    transition: all 0.2s ease;
+    position: relative;
+    font-family: inherit;
+    text-decoration: none;
+    min-width: 0;
+}
+
+/* Arrow connector between steps */
+.workflow-arrow {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #d1d5db;
+    font-size: 1rem;
+    padding: 0 0.1rem;
+    flex-shrink: 0;
+    align-self: center;
+}
+
+.workflow-step-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1rem;
     transition: all 0.2s;
-    border: 3px solid;
+    border: 2px solid transparent;
+}
+
+.workflow-step-label {
+    font-size: 0.7rem;
+    font-weight: 800;
     text-transform: uppercase;
-    letter-spacing: 1px;
-    min-width: 160px;
+    letter-spacing: 0.08em;
+    transition: color 0.2s;
 }
 
-.bulk-status-btn:hover:not(.active) {
+.workflow-step-sub {
+    font-size: 0.65rem;
+    font-weight: 500;
+    opacity: 0.65;
+    text-align: center;
+    line-height: 1.3;
+}
+
+/* DRAFT step */
+.workflow-step.draft .workflow-step-icon {
+    background: #fef3c7;
+    color: #d97706;
+    border-color: #fde68a;
+}
+.workflow-step.draft .workflow-step-label { color: #92400e; }
+.workflow-step.draft:hover {
+    background: #fffbeb;
+    box-shadow: 0 4px 14px rgba(245,158,11,0.2);
     transform: translateY(-2px);
-    box-shadow: 0 10px 15px -3px rgba(0,0,0,0.2);
+}
+.workflow-step.draft.is-active {
+    background: linear-gradient(135deg, #fef3c7, #fde68a);
+    box-shadow: 0 4px 14px rgba(245,158,11,0.25);
+}
+.workflow-step.draft.is-active .workflow-step-icon {
+    background: #f59e0b;
+    color: white;
+    border-color: #d97706;
+    box-shadow: 0 4px 10px rgba(245,158,11,0.4);
 }
 
-.bulk-status-btn.draft {
-    background: #fff3cd;
-    color: #856404;
-    border-color: #ffc107;
+/* APPROVED step */
+.workflow-step.approved .workflow-step-icon {
+    background: #dbeafe;
+    color: #2563eb;
+    border-color: #bfdbfe;
 }
-.bulk-status-btn.draft:hover, .bulk-status-btn.draft.active {
-    background: #ffe69c;
-    border-color: #e0a800;
+.workflow-step.approved .workflow-step-label { color: #1e40af; }
+.workflow-step.approved:hover {
+    background: #eff6ff;
+    box-shadow: 0 4px 14px rgba(59,130,246,0.2);
+    transform: translateY(-2px);
 }
-
-.bulk-status-btn.approved {
-    background: #cfe2ff;
-    color: #084298;
-    border-color: #0d6efd;
+.workflow-step.approved.is-active {
+    background: linear-gradient(135deg, #dbeafe, #bfdbfe);
+    box-shadow: 0 4px 14px rgba(59,130,246,0.25);
 }
-.bulk-status-btn.approved:hover, .bulk-status-btn.approved.active {
-    background: #9ec5fe;
-    border-color: #0a58ca;
-}
-
-.bulk-status-btn.paid {
-    background: #d1e7dd;
-    color: #0f5132;
-    border-color: #198754;
-}
-.bulk-status-btn.paid:hover, .bulk-status-btn.paid.active {
-    background: #a3cfbb;
-    border-color: #146c43;
+.workflow-step.approved.is-active .workflow-step-icon {
+    background: #3b82f6;
+    color: white;
+    border-color: #2563eb;
+    box-shadow: 0 4px 10px rgba(59,130,246,0.4);
 }
 
+/* PAID step */
+.workflow-step.paid-btn .workflow-step-icon {
+    background: #d1fae5;
+    color: #059669;
+    border-color: #a7f3d0;
+}
+.workflow-step.paid-btn .workflow-step-label { color: #065f46; }
+.workflow-step.paid-btn:hover:not(:disabled) {
+    background: #ecfdf5;
+    box-shadow: 0 4px 14px rgba(16,185,129,0.2);
+    transform: translateY(-2px);
+}
+.workflow-step.paid-btn.is-active {
+    background: linear-gradient(135deg, #d1fae5, #a7f3d0);
+    box-shadow: 0 4px 14px rgba(16,185,129,0.25);
+}
+.workflow-step.paid-btn.is-active .workflow-step-icon {
+    background: #10b981;
+    color: white;
+    border-color: #059669;
+    box-shadow: 0 4px 10px rgba(16,185,129,0.4);
+}
+
+/* Disabled paid button */
+.workflow-step.paid-btn:disabled {
+    cursor: not-allowed;
+    opacity: 0.45;
+    filter: grayscale(30%);
+}
+.workflow-step.paid-btn:disabled:hover {
+    transform: none;
+    box-shadow: none;
+    background: transparent;
+}
+
+/* Locked notice */
 .paid-locked-notice {
     display: flex;
     align-items: center;
     gap: 1rem;
-    background: #d1e7dd;
-    border: 2px solid #198754;
+    background: linear-gradient(135deg, #d1fae5, #ecfdf5);
+    border: 2px solid #6ee7b7;
     padding: 1rem 1.5rem;
     border-radius: 12px;
-    color: #0f5132;
+    color: #065f46;
 }
-
-.paid-locked-notice i { font-size: 1.5rem; }
-
-.paid-locked-notice h4 {
-    font-size: 1rem;
-    font-weight: 700;
-    margin-bottom: 2px;
-}
-
-.paid-locked-notice p {
-    font-size: 0.875rem;
-    opacity: 0.8;
-    margin: 0;
-}
+.paid-locked-notice i { font-size: 1.5rem; color: #10b981; }
+.paid-locked-notice h4 { font-size: 1rem; font-weight: 700; margin-bottom: 2px; }
+.paid-locked-notice p { font-size: 0.875rem; opacity: 0.75; margin: 0; }
 
 .partial-paid-notice {
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    background: #fff3cd;
-    border: 1px solid #ffc107;
-    padding: 0.75rem 1rem;
+    background: #fffbeb;
+    border: 1px solid #fde68a;
+    padding: 0.65rem 1rem;
     border-radius: 8px;
-    color: #856404;
-    font-size: 0.875rem;
+    color: #92400e;
+    font-size: 0.825rem;
     margin-bottom: 1rem;
 }
+
+.paid-blocked-notice {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    padding: 0.6rem 1rem;
+    border-radius: 8px;
+    color: #991b1b;
+    font-size: 0.8rem;
+    margin-top: 0.75rem;
+}
+.paid-blocked-notice i { color: #ef4444; }
+
+.status-help {
+    margin-top: 1rem;
+    font-size: 0.8rem;
+    color: #9ca3af;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+.status-help strong { color: #ef4444; }
 
 .status-badge {
     display: inline-flex;
     align-items: center;
     gap: 4px;
-    padding: 6px 12px;
-    font-size: 0.875rem;
+    padding: 5px 12px;
+    font-size: 0.78rem;
     font-weight: 700;
-    border: 2px solid;
-    border-radius: 6px;
+    border-radius: 20px;
     text-transform: uppercase;
+    letter-spacing: 0.05em;
 }
+.status-badge.draft    { background: #fef3c7; color: #92400e; }
+.status-badge.approved { background: #dbeafe; color: #1e40af; }
+.status-badge.paid     { background: #d1fae5; color: #065f46; }
 
-.status-badge.draft {
-    background: #fff3cd;
-    border-color: #ffc107;
-    color: #856404;
-}
-
-.status-badge.approved {
-    background: #cfe2ff;
-    border-color: #0d6efd;
-    color: #084298;
-}
-
-.status-badge.paid {
-    background: #d1e7dd;
-    border-color: #198754;
-    color: #0f5132;
-}
-
-.status-help {
-    margin-top: 1rem;
-    font-size: 0.875rem;
-    color: #6b7280;
-}
-
-.status-help strong {
-    color: #dc3545;
-}
-
-.period-filter-card {
+.month-tabs-card {
     background: #fff;
-    border-radius: 12px;
-    padding: 1rem 1.5rem;
+    border-radius: 14px;
+    padding: 1rem 1.25rem 0.85rem;
     margin-bottom: 1.5rem;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    display: flex;
-    align-items: center;
-    gap: 1rem;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
 }
 
-.period-filter-header {
+.month-tabs-header {
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    font-weight: 600;
-    color: #374151;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: #9ca3af;
+    margin-bottom: 0.75rem;
 }
 
-.period-filter-header i {
-    color: #2d6394;
+.month-tabs-header i { color: #2d6394; }
+
+.month-tabs {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
 }
 
-.period-filter-form select {
-    padding: 10px 15px;
+.month-tab {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 0.55rem 0.9rem;
+    border-radius: 10px;
     border: 2px solid #e5e7eb;
-    border-radius: 8px;
-    font-weight: 600;
-    color: #111827;
+    background: #f9fafb;
+    text-decoration: none;
+    color: #374151;
+    transition: all 0.18s;
+    min-width: 58px;
     cursor: pointer;
+    position: relative;
 }
 
-.period-filter-form select:focus {
-    outline: none;
-    border-color: #2d6394;
+.month-tab:hover {
+    border-color: #93c5fd;
+    background: #eff6ff;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 10px rgba(45,99,148,0.12);
 }
+
+.month-tab.active {
+    border-color: #2d6394;
+    background: linear-gradient(135deg, #2d6394, #1a3a5c);
+    color: white;
+    box-shadow: 0 4px 14px rgba(45,99,148,0.35);
+    transform: translateY(-2px);
+}
+
+.month-tab.all-paid {
+    border-color: #6ee7b7;
+    background: #f0fdf4;
+}
+
+.month-tab.all-paid.active {
+    border-color: #10b981;
+    background: linear-gradient(135deg, #059669, #047857);
+}
+
+.month-tab-year {
+    font-size: 0.6rem;
+    font-weight: 600;
+    opacity: 0.65;
+    line-height: 1;
+    margin-bottom: 1px;
+}
+
+.month-tab.active .month-tab-year { opacity: 0.8; color: #bfdbfe; }
+
+.month-tab-label {
+    font-size: 0.875rem;
+    font-weight: 700;
+    line-height: 1;
+}
+
+.month-tab-count {
+    font-size: 0.65rem;
+    font-weight: 600;
+    background: rgba(0,0,0,0.07);
+    padding: 1px 6px;
+    border-radius: 20px;
+    margin-top: 3px;
+    color: inherit;
+}
+
+.month-tab.active .month-tab-count {
+    background: rgba(255,255,255,0.25);
+}
+
+.month-tab-dots {
+    display: flex;
+    gap: 3px;
+    margin-top: 4px;
+}
+
+.dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    cursor: help;
+}
+
+.dot-draft    { background: #f59e0b; }
+.dot-approved { background: #3b82f6; }
+.dot-paid     { background: #10b981; }
 </style>
 
 <link rel="stylesheet" href="https://cdn.datatables.net/1.13.7/css/jquery.dataTables.min.css">
@@ -736,10 +954,12 @@ require_once 'includes/header.php';
             </div>
         </div>
         <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+            <?php if (!isAdmin2()): ?>
             <a href="payroll_generate.php?department_id=<?php echo $selectedDeptId; ?>" 
                class="btn btn-success" style="background: rgba(16, 185, 129, 0.9); border: 2px solid rgba(255,255,255,0.3);">
                 <i class="fas fa-calculator"></i> Generate Payroll
             </a>
+            <?php endif; ?>
             <a href="payroll_history.php?department_id=<?php echo $selectedDeptId; ?>" 
                class="btn btn-secondary" style="background: white; border: 2px solid rgba(255,255,255,0.3);">
                 <i class="fas fa-history"></i> History
@@ -750,6 +970,7 @@ require_once 'includes/header.php';
                 <i class="fas fa-print"></i> Print
             </a>
             <?php endif; ?>
+            <?php if (!isAdmin2()): ?>
             <?php if (!$allPaid && $totalRecords == 0): ?>
             <a href="payroll_create.php?department_id=<?php echo $selectedDeptId; ?>" class="btn btn-primary" style="background: rgba(255,255,255,0.2); border: 2px solid rgba(255,255,255,0.3);">
                 <i class="fas fa-plus"></i> Add Payroll
@@ -757,45 +978,69 @@ require_once 'includes/header.php';
             <?php elseif ($totalRecords > 0 && !$allPaid): ?>
         
             <?php endif; ?>
+            <?php endif; ?>
         </div>
     </div>
 </div>
 
-<!-- Period Filter -->
+<!-- Month Filter Tabs -->
 <?php if (!empty($availablePeriods)): ?>
-<div class="period-filter-card">
-    <div class="period-filter-header">
-        <i class="fas fa-filter"></i>
-        <span>Filter by Month:</span>
+<div class="month-tabs-card">
+    <div class="month-tabs-header">
+        <i class="fas fa-calendar-alt"></i>
+        <span>Filter by Month</span>
     </div>
-    <form method="GET" class="period-filter-form">
-        <input type="hidden" name="department_id" value="<?php echo $selectedDeptId; ?>">
-        <select name="period_select" class="form-control" onchange="applyPeriodFilter(this.value)" style="min-width: 280px;">
-            <?php foreach($availablePeriods as $p): 
-                $periodValue = $p['payroll_month'] . '|' . $p['payroll_year'];
-                $isSelected = ($p['payroll_month'] == $currentMonth && $p['payroll_year'] == $currentYear);
-            ?>
-                <option value="<?php echo $periodValue; ?>" <?php echo $isSelected ? 'selected' : ''; ?>>
-                    <?php echo $p['payroll_month'] . ' ' . $p['payroll_year']; ?>
-                </option>
-            <?php endforeach; ?>
-        </select>
-    </form>
+    <div class="month-tabs">
+        <?php
+        // "All" tab
+        $isAll = (!$currentMonth && !$currentYear);
+        // Total counts across all months
+        $allTotal = array_sum(array_column($availablePeriods, 'total'));
+        $allDraft = array_sum(array_column($availablePeriods, 'draft_count'));
+        $allApproved = array_sum(array_column($availablePeriods, 'approved_count'));
+        $allPaidAll = array_sum(array_column($availablePeriods, 'paid_count'));
+        ?>
+        <a href="payroll.php?department_id=<?php echo $selectedDeptId; ?>&month=all" 
+           class="month-tab <?php echo $isAll ? 'active' : ''; ?>">
+            <span class="month-tab-label">All Months</span>
+            <span class="month-tab-count"><?php echo $allTotal; ?></span>
+            <div class="month-tab-dots">
+                <?php if ($allDraft > 0): ?><span class="dot dot-draft" title="<?php echo $allDraft; ?> Draft"></span><?php endif; ?>
+                <?php if ($allApproved > 0): ?><span class="dot dot-approved" title="<?php echo $allApproved; ?> Approved"></span><?php endif; ?>
+                <?php if ($allPaidAll > 0): ?><span class="dot dot-paid" title="<?php echo $allPaidAll; ?> Paid"></span><?php endif; ?>
+            </div>
+        </a>
+        <?php foreach($availablePeriods as $p):
+            $isActive = ($p['payroll_month'] == $currentMonth && $p['payroll_year'] == $currentYear);
+            $monthShort = date('M', mktime(0,0,0,date('m', strtotime($p['payroll_month'].' 1')),1));
+        ?>
+        <a href="payroll.php?department_id=<?php echo $selectedDeptId; ?>&month=<?php echo urlencode($p['payroll_month']); ?>&year=<?php echo $p['payroll_year']; ?>"
+           class="month-tab <?php echo $isActive ? 'active' : ''; ?> <?php echo $p['paid_count'] == $p['total'] ? 'all-paid' : ''; ?>">
+            <span class="month-tab-year"><?php echo $p['payroll_year']; ?></span>
+            <span class="month-tab-label"><?php echo $monthShort; ?></span>
+            <span class="month-tab-count"><?php echo $p['total']; ?></span>
+            <div class="month-tab-dots">
+                <?php if ($p['draft_count'] > 0): ?><span class="dot dot-draft" title="<?php echo $p['draft_count']; ?> Draft"></span><?php endif; ?>
+                <?php if ($p['approved_count'] > 0): ?><span class="dot dot-approved" title="<?php echo $p['approved_count']; ?> Approved"></span><?php endif; ?>
+                <?php if ($p['paid_count'] > 0): ?><span class="dot dot-paid" title="<?php echo $p['paid_count']; ?> Paid"></span><?php endif; ?>
+            </div>
+        </a>
+        <?php endforeach; ?>
+    </div>
 </div>
-<script>
-function applyPeriodFilter(value) {
-    const parts = value.split('|');
-    const url = 'payroll.php?department_id=<?php echo $selectedDeptId; ?>&month=' + encodeURIComponent(parts[0]) + '&year=' + parts[1];
-    window.location.href = url;
-}
-</script>
 <?php endif; ?>
 
 <!-- Bulk Status Control -->
 <?php if ($totalRecords > 0): ?>
 <div class="bulk-status-control">
     <div class="bulk-status-header">
-        <h3><i class="fas fa-tasks"></i> Change Status for All Records</h3>
+        <h3><i class="fas fa-tasks"></i> Change Status for All Records
+            <?php if ($currentMonth && $currentYear): ?>
+                <span style="font-size:0.85rem; font-weight:500; color:#6b7280; margin-left:8px;">— <?php echo $currentMonth . ' ' . $currentYear; ?></span>
+            <?php else: ?>
+                <span style="font-size:0.85rem; font-weight:500; color:#6b7280; margin-left:8px;">— All Months</span>
+            <?php endif; ?>
+        </h3>
         <span class="record-count"><?php echo $totalRecords; ?> total (<?php echo $nonPaidCount; ?> can be changed)</span>
     </div>
     
@@ -808,12 +1053,6 @@ function applyPeriodFilter(value) {
             </div>
         </div>
     <?php else: ?>
-        <?php if ($paidCount > 0): ?>
-            <div class="partial-paid-notice">
-                <i class="fas fa-exclamation-triangle"></i>
-                <span><strong><?php echo $paidCount; ?> record(s) are already PAID</strong> and locked. Only <?php echo $nonPaidCount; ?> record(s) will be affected.</span>
-            </div>
-        <?php endif; ?>
         
         <form method="POST" id="statusForm">
             <input type="hidden" name="dept_id" value="<?php echo $selectedDeptId; ?>">
@@ -821,23 +1060,47 @@ function applyPeriodFilter(value) {
             <input type="hidden" name="filter_year" value="<?php echo $currentYear ?? ''; ?>">
             <input type="hidden" name="bulk_status_change" id="statusInput" value="">
             
-            <div class="bulk-status-buttons">
-                <button type="button" class="bulk-status-btn draft <?php echo $currentDeptStatus === 'Draft' ? 'active' : ''; ?>" onclick="changeStatus('Draft')">
-                    ✏️ DRAFT
+            <div class="workflow-steps">
+                <?php if (!isAdmin2()): ?>
+                <button type="button"
+                    class="workflow-step draft <?php echo $currentDeptStatus === 'Draft' ? 'is-active' : ''; ?>"
+                    onclick="changeStatus('Draft')">
+                    <div class="workflow-step-icon"><i class="fas fa-pencil-alt"></i></div>
+                    <span class="workflow-step-label">Draft</span>
+                    <span class="workflow-step-sub"><?php echo $draftCount; ?> record<?php echo $draftCount != 1 ? 's' : ''; ?></span>
                 </button>
-                
-                <button type="button" class="bulk-status-btn approved <?php echo $currentDeptStatus === 'Approved' ? 'active' : ''; ?>" onclick="changeStatus('Approved')">
-                    ✅ APPROVED
+
+                <div class="workflow-arrow"><i class="fas fa-chevron-right"></i></div>
+
+                <button type="button"
+                    class="workflow-step approved <?php echo $currentDeptStatus === 'Approved' ? 'is-active' : ''; ?>"
+                    onclick="changeStatus('Approved')">
+                    <div class="workflow-step-icon"><i class="fas fa-check-circle"></i></div>
+                    <span class="workflow-step-label">Approved</span>
+                    <span class="workflow-step-sub"><?php echo $counts['approved_count'] ?? 0; ?> record<?php echo ($counts['approved_count'] ?? 0) != 1 ? 's' : ''; ?></span>
                 </button>
-                
-                <button type="button" class="bulk-status-btn paid" onclick="changeStatus('Paid')">
-                    🔒 PAID
+
+                <div class="workflow-arrow"><i class="fas fa-chevron-right"></i></div>
+                <?php endif; ?>
+
+                <?php if ($canMarkPaid): ?>
+                <button type="button"
+                    class="workflow-step paid-btn"
+                    onclick="changeStatus('Paid')">
+                    <div class="workflow-step-icon"><i class="fas fa-lock"></i></div>
+                    <span class="workflow-step-label">Paid</span>
+                    <span class="workflow-step-sub">Mark all paid</span>
                 </button>
+                <?php else: ?>
+                <button type="button" class="workflow-step paid-btn" disabled
+                    title="All records must be Approved before marking as Paid">
+                    <div class="workflow-step-icon"><i class="fas fa-lock"></i></div>
+                    <span class="workflow-step-label">Paid</span>
+                    <span class="workflow-step-sub">Needs approval</span>
+                </button>
+                <?php endif; ?>
             </div>
         </form>
-        <p class="status-help">
-            <i class="fas fa-info-circle"></i> Click a button to change status for all non-paid records. <strong>Warning: "PAID" is permanent and cannot be undone!</strong>
-        </p>
     <?php endif; ?>
 </div>
 <?php endif; ?>
@@ -847,7 +1110,13 @@ function applyPeriodFilter(value) {
         <h2 class="card-title">
             <i class="fas fa-list"></i>
             Payroll Records
+            <?php if ($currentMonth && $currentYear): ?>
+                <span class="badge badge-info" style="font-size:0.75rem; margin-left:8px;"><?php echo $currentMonth . ' ' . $currentYear; ?></span>
+            <?php else: ?>
+                <span class="badge badge-secondary" style="font-size:0.75rem; margin-left:8px;">All Months</span>
+            <?php endif; ?>
         </h2>
+        <span style="font-size:0.875rem; color:#6b7280;"><?php echo $totalRecords; ?> record<?php echo $totalRecords != 1 ? 's' : ''; ?></span>
     </div>
     
     <div class="card-body" style="padding: 0;">
@@ -925,7 +1194,7 @@ function applyPeriodFilter(value) {
                                         <a href="payroll_view.php?id=<?php echo $row['id']; ?>" class="btn btn-info btn-icon sm" title="View">
                                             <i class="fas fa-eye"></i>
                                         </a>
-                                        <?php if (!$rowIsPaid): ?>
+                                        <?php if (!$rowIsPaid && !isAdmin2()): ?>
                                             <a href="payroll_edit.php?id=<?php echo $row['id']; ?>" class="btn btn-secondary btn-icon sm" title="Edit">
                                                 <i class="fas fa-edit"></i>
                                             </a>
@@ -972,13 +1241,12 @@ $(document).ready(function() {
 
 function changeStatus(status) {
     var nonPaidCount = <?php echo $nonPaidCount; ?>;
-    var msg = 'Change ' + nonPaidCount + ' record(s) to "' + status + '"?';
-    
-    if (status === 'Paid') {
-        msg = '⚠️ WARNING!\n\nYou are about to mark ' + nonPaidCount + ' record(s) as "PAID".\n\nThis is PERMANENT and cannot be undone!\n\nPaid records:\n- Cannot be edited\n- Cannot be deleted\n- Cannot change status\n\nAre you absolutely sure?';
-    }
-    
-    if (confirm(msg)) {
+    var messages = {
+        'Draft':    'Move ' + nonPaidCount + ' record(s) back to Draft?',
+        'Approved': 'Mark ' + nonPaidCount + ' record(s) as Approved?',
+        'Paid':     'Mark ' + nonPaidCount + ' record(s) as Paid? This cannot be undone.'
+    };
+    if (confirm(messages[status])) {
         document.getElementById('statusInput').value = status;
         document.getElementById('statusForm').submit();
     }
